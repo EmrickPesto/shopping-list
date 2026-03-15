@@ -76,6 +76,12 @@ body {
   flex-direction: column;
   position: relative;
 }
+.app.locked {
+  overflow: hidden;
+  height: 100dvh;
+  pointer-events: none;
+  touch-action: none;
+}
 
 /* Header */
 .header {
@@ -445,8 +451,6 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s;
-  touch-action: none;
-  overscroll-behavior: contain;
 }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -458,7 +462,7 @@ body {
   max-height: 85dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   padding: 20px 20px calc(var(--safe-bottom) + 20px);
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -688,8 +692,6 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s;
-  touch-action: none;
-  overscroll-behavior: contain;
 }
 .menu-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -704,7 +706,7 @@ body {
   max-height: 85dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .menu-overlay.open .menu-sheet { transform: translateY(0); }
 
@@ -983,20 +985,8 @@ function renderOverlays() {
   root.innerHTML = renderMenu() + renderModals();
 
   const hasOpenOverlay = menuOpen || modalStack.length > 0;
-
-  // Lock body scroll when overlay is open - prevents ALL background scrolling on iOS
+  document.getElementById('app').classList.toggle('locked', hasOpenOverlay);
   document.body.style.overflow = hasOpenOverlay ? 'hidden' : '';
-  document.body.style.position = hasOpenOverlay ? 'fixed' : '';
-  document.body.style.width = hasOpenOverlay ? '100%' : '';
-  document.body.style.top = hasOpenOverlay ? `-${window._scrollY || 0}px` : '';
-
-  if (hasOpenOverlay && window._scrollY === undefined) {
-    window._scrollY = window.scrollY;
-  }
-  if (!hasOpenOverlay && window._scrollY !== undefined) {
-    window.scrollTo(0, window._scrollY);
-    delete window._scrollY;
-  }
 
   // Attach swipe-to-dismiss on handle zones
   root.querySelectorAll('.sheet-handle-zone').forEach(hz => {
@@ -1949,7 +1939,7 @@ function doShare(mode) {
 // ==============================
 // MENU & MODAL
 // ==============================
-function openMenu() { window._scrollY = window.scrollY; menuOpen = true; render(); }
+function openMenu() { menuOpen = true; render(); }
 function closeMenu(e) {
   if (e && e.target !== e.currentTarget) return;
   menuOpen = false;
@@ -1957,7 +1947,6 @@ function closeMenu(e) {
 }
 
 function pushModal(html) {
-  if (modalStack.length === 0 && !menuOpen) window._scrollY = window.scrollY;
   modalStack.push({html});
   render();
 }
