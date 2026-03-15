@@ -77,8 +77,6 @@ body {
   position: relative;
 }
 .app.locked {
-  overflow: hidden;
-  height: 100dvh;
   pointer-events: none;
   touch-action: none;
 }
@@ -979,11 +977,11 @@ function render() {
     </div>
   `;
 
-  // Restore scroll position
+  renderOverlays();
+
+  // Restore scroll position after everything (including .locked class) is applied
   const newContent = app.querySelector('.content');
   if (newContent) newContent.scrollTop = savedScroll;
-
-  renderOverlays();
 }
 
 function renderOverlays() {
