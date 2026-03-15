@@ -720,7 +720,7 @@ body {
 // DATA LAYER
 // ==============================
 const STORAGE_KEY = 'grocery_app_data';
-const DEFAULT_AISLES = ['Fruits & Légumes', 'Boulangerie', 'Produits laitiers', 'Viandes & Poissons', 'Épicerie', 'Boissons', 'Surgelés', 'Hygiène', 'Autre'];
+const DEFAULT_AISLES = ['Fruits & Légumes', 'Boulangerie', 'Produits frais', 'Épicerie', 'Boissons', 'Surgelés', 'Hygiène', 'Autre'];
 
 function loadData() {
   try {
@@ -758,8 +758,26 @@ function normalize(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300
 function similarity(a, b) {
   const na = normalize(a), nb = normalize(b);
   if (na === nb) return 1;
-  if (na.includes(nb) || nb.includes(na)) return 0.8;
-  // Levenshtein-based
+
+  // Prefix match: "ai" at start of "ail" is very strong
+  if (nb.startsWith(na)) return 0.95 - (nb.length - na.length) * 0.01;
+  if (na.startsWith(nb)) return 0.95 - (na.length - nb.length) * 0.01;
+
+  // Word-level prefix: "ai" at start of a word in "vinaigre" 
+  const bWords = nb.split(/[\s\-']+/);
+  const aWords = na.split(/[\s\-']+/);
+  for (const w of bWords) {
+    if (w.startsWith(na)) return 0.85 - (w.length - na.length) * 0.01;
+  }
+  for (const w of aWords) {
+    if (w.startsWith(nb)) return 0.85 - (w.length - nb.length) * 0.01;
+  }
+
+  // Substring: "ai" inside "raisin" is weaker  
+  if (nb.includes(na)) return 0.6 + (na.length / nb.length) * 0.15;
+  if (na.includes(nb)) return 0.6 + (nb.length / na.length) * 0.15;
+
+  // Levenshtein-based for typos
   const m = na.length, n = nb.length;
   if (Math.abs(m - n) > Math.max(m, n) * 0.5) return 0;
   const dp = Array.from({length: m+1}, (_,i) => {
@@ -775,15 +793,16 @@ function similarity(a, b) {
   return 1 - dist / Math.max(m, n);
 }
 
-function findSimilar(name, excludeId) {
+function findSimilar(name, excludeId, threshold) {
+  threshold = threshold || 0.4;
   const matches = [];
   state.products.forEach(p => {
     if (p.id === excludeId) return;
     const sim = similarity(name, p.name);
-    if (sim >= 0.6) matches.push({product: p, similarity: sim});
+    if (sim >= threshold) matches.push({product: p, similarity: sim});
   });
   matches.sort((a,b) => b.similarity - a.similarity);
-  return matches.slice(0, 3);
+  return matches;
 }
 
 function showToast(msg) {
@@ -915,7 +934,7 @@ function render() {
                   <span class="product-qty">${p.qty||1}</span>
                   <button class="product-qty-btn" onclick="event.stopPropagation();changeQty('${p.id}',1)">+</button>
                 </div>
-                <button class="product-delete" onclick="event.stopPropagation();deleteProduct('${p.id}')">×</button>
+                <button class="product-delete" onclick="event.stopPropagation();deleteProduct('${p.id}')" ${p.selected ? 'style="display:none"' : ''}>×</button>
               </div>
             `).join('')}
           </div>
@@ -975,6 +994,11 @@ function renderMenu() {
         <button class="menu-item" onclick="deselectAll()">
           <span class="menu-icon">🔄</span>
           <div><div class="menu-label">Tout désélectionner</div><div class="menu-desc">Remettre à zéro la sélection</div></div>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" onclick="resetAllData()">
+          <span class="menu-icon">🗑️</span>
+          <div><div class="menu-label" style="color:var(--accent)">Réinitialiser tout</div><div class="menu-desc">Supprimer toutes les données</div></div>
         </button>
       </div>
     </div>
@@ -1039,15 +1063,60 @@ function toggleProduct(id) {
     p.qty = p.qty || 1;
   }
   saveData();
-  render();
+  // If in "selected" filter and deselecting, need full render to remove item
+  if (currentFilter === 'selected' && !p.selected) {
+    render();
+    return;
+  }
+  updateProductDOM(id);
+  updateSelectedBadge();
 }
 
 function changeQty(id, delta) {
   const p = state.products.find(x => x.id === id);
   if (!p) return;
-  p.qty = Math.max(1, (p.qty || 1) + delta);
+  const newQty = (p.qty || 1) + delta;
+  if (newQty < 1) {
+    // Deselect the product
+    p.selected = false;
+    saveData();
+    if (currentFilter === 'selected') {
+      render();
+    } else {
+      updateProductDOM(id);
+      updateSelectedBadge();
+    }
+    return;
+  }
+  p.qty = newQty;
   saveData();
-  render();
+  // Only update qty display
+  const el = document.querySelector(`.product-item[data-id="${id}"] .product-qty`);
+  if (el) el.textContent = p.qty;
+}
+
+function updateProductDOM(id) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  const el = document.querySelector(`.product-item[data-id="${id}"]`);
+  if (!el) return;
+
+  if (p.selected) {
+    el.classList.add('selected');
+    el.querySelector('.product-checkbox').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+    el.querySelector('.product-qty').textContent = p.qty || 1;
+    el.querySelector('.product-delete').style.display = 'none';
+  } else {
+    el.classList.remove('selected');
+    el.querySelector('.product-checkbox').innerHTML = '';
+    el.querySelector('.product-delete').style.display = '';
+  }
+}
+
+function updateSelectedBadge() {
+  const count = state.products.filter(p => p.selected).length;
+  const badge = document.querySelector('.selected-filter-btn .badge');
+  if (badge) badge.textContent = count;
 }
 
 function deleteProduct(id) {
@@ -1077,6 +1146,30 @@ function deselectAll() {
   closeMenu();
   render();
   showToast('Sélection remise à zéro');
+}
+
+function resetAllData() {
+  closeMenu();
+  pushModal(`
+    <h2>Réinitialiser ?</h2>
+    <p style="color:var(--text2);margin-bottom:16px">
+      Cette action supprimera <strong>tous les produits, rayons et données</strong>. Cette action est irréversible.
+    </p>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn danger" onclick="confirmResetAll()">Tout supprimer</button>
+    </div>
+  `);
+}
+
+function confirmResetAll() {
+  localStorage.removeItem(STORAGE_KEY);
+  state = { aisles: [...DEFAULT_AISLES], products: [], sortMode: 'frequency', theme: state.theme };
+  openFrequencies = {};
+  saveData();
+  closeTopModal();
+  render();
+  showToast('Données réinitialisées');
 }
 
 // ==============================
@@ -1114,15 +1207,27 @@ function checkSimilarOnAdd() {
   const name = document.getElementById('add-name')?.value?.trim();
   const container = document.getElementById('add-similar');
   if (!container || !name || name.length < 2) { if(container) container.innerHTML=''; return; }
-  const matches = findSimilar(name, null);
+  const matches = findSimilar(name, null, 0.5);
   if (matches.length === 0) { container.innerHTML=''; return; }
+  const showInitially = 5;
+  const hasMore = matches.length > showInitially;
   container.innerHTML = `
-    <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Produits similaires :</div>
-    ${matches.map(m => `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Produits similaires (${matches.length}) :</div>
+    ${matches.slice(0, showInitially).map(m => `
       <div class="match-suggestion">
-        <div class="match-text"><em>${m.product.name}</em> (${m.product.aisle})</div>
+        <div class="match-text"><em>${m.product.name}</em> <span style="color:var(--text3);font-size:12px">${m.product.aisle} — ${Math.round(m.similarity*100)}%</span></div>
       </div>
     `).join('')}
+    ${hasMore ? `
+      <div id="add-similar-more" style="display:none">
+        ${matches.slice(showInitially).map(m => `
+          <div class="match-suggestion">
+            <div class="match-text"><em>${m.product.name}</em> <span style="color:var(--text3);font-size:12px">${m.product.aisle} — ${Math.round(m.similarity*100)}%</span></div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="match-btn" style="margin-top:4px;padding:8px 14px" onclick="document.getElementById('add-similar-more').style.display='block';this.style.display='none'">Voir les ${matches.length - showInitially} autres…</button>
+    ` : ''}
   `;
 }
 
