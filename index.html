@@ -324,9 +324,7 @@ body {
 .product-name {
   font-size: 15px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 .product-item.selected .product-name {
   color: var(--accent2);
@@ -595,7 +593,7 @@ body {
   touch-action: none;
   cursor: grab;
 }
-.aisle-reorder-item .aisle-label { flex: 1; font-weight: 500; }
+.aisle-reorder-item .aisle-label { flex: 1; font-weight: 500; cursor: pointer; }
 .aisle-reorder-item .delete-btn {
   color: var(--text3);
   cursor: pointer;
@@ -1554,16 +1552,7 @@ function renderAisleModal() {
       <button class="modal-btn primary" style="flex:0;padding:10px 16px" onclick="addAisle()">+</button>
     </div>
     <ul class="aisle-reorder-list" id="aisle-list">
-      ${state.aisles.map((a, idx) => `
-        <li class="aisle-reorder-item" data-idx="${idx}" draggable="false">
-          <span class="drag-handle" style="cursor:grab;touch-action:none"
-            onpointerdown="startDragAisle(event,${idx})">☰</span>
-          <span class="aisle-label">${a}</span>
-          <span class="delete-btn" onclick="removeAisle('${a.replace(/'/g,"\\'")}')">×</span>
-          ${idx > 0 ? `<span class="delete-btn" onclick="moveAisle(${idx},-1)" style="font-size:14px">▲</span>` : '<span style="width:26px"></span>'}
-          ${idx < state.aisles.length-1 ? `<span class="delete-btn" onclick="moveAisle(${idx},1)" style="font-size:14px">▼</span>` : '<span style="width:26px"></span>'}
-        </li>
-      `).join('')}
+      ${state.aisles.map((a, idx) => aisleItemHTML(a, idx)).join('')}
     </ul>
     <div class="modal-actions">
       <button class="modal-btn primary" onclick="closeTopModal();render();">Terminé</button>
@@ -1577,6 +1566,68 @@ function renderAisleModal() {
     pushModal(html);
     modalStack[modalStack.length-1]._isAisle = true;
   }
+}
+
+function aisleItemHTML(a, idx) {
+  const escaped = a.replace(/'/g, "\\'");
+  return `
+    <li class="aisle-reorder-item" data-idx="${idx}" draggable="false">
+      <span class="drag-handle" style="cursor:grab;touch-action:none"
+        onpointerdown="startDragAisle(event,${idx})">☰</span>
+      <span class="aisle-label" onclick="renameAisle(${idx})">${a}</span>
+      <span class="delete-btn" onclick="renameAisle(${idx})" title="Renommer" style="font-size:14px">✏️</span>
+      <span class="delete-btn" onclick="removeAisle('${escaped}')">×</span>
+      ${idx > 0 ? `<span class="delete-btn" onclick="moveAisle(${idx},-1)" style="font-size:14px">▲</span>` : '<span style="width:26px"></span>'}
+      ${idx < state.aisles.length-1 ? `<span class="delete-btn" onclick="moveAisle(${idx},1)" style="font-size:14px">▼</span>` : '<span style="width:26px"></span>'}
+    </li>
+  `;
+}
+
+function renameAisle(idx) {
+  const oldName = state.aisles[idx];
+  const list = document.getElementById('aisle-list');
+  if (!list) return;
+  const li = list.children[idx];
+  if (!li) return;
+
+  // Replace the label and edit button with an inline input
+  const label = li.querySelector('.aisle-label');
+  const editBtn = li.querySelectorAll('.delete-btn')[0]; // the ✏️ button
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = oldName;
+  input.style.cssText = 'flex:1;padding:6px 10px;border:1.5px solid var(--accent2);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:14px;outline:none';
+
+  const confirmBtn = document.createElement('span');
+  confirmBtn.className = 'delete-btn';
+  confirmBtn.style.cssText = 'font-size:14px;color:var(--accent2)';
+  confirmBtn.textContent = '✓';
+
+  const doRename = () => {
+    const newName = input.value.trim();
+    if (!newName) { updateAisleList(); return; }
+    if (newName !== oldName && state.aisles.some(a => normalize(a) === normalize(newName))) {
+      showToast('Ce rayon existe déjà');
+      return;
+    }
+    if (newName !== oldName) {
+      state.aisles[idx] = newName;
+      // Update all products that use this aisle
+      state.products.forEach(p => { if (p.aisle === oldName) p.aisle = newName; });
+      saveData();
+      showToast(`Rayon renommé`);
+    }
+    updateAisleList();
+  };
+
+  confirmBtn.onclick = doRename;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doRename(); });
+
+  label.replaceWith(input);
+  editBtn.replaceWith(confirmBtn);
+  input.focus();
+  input.select();
 }
 
 function addAisle() {
@@ -1632,16 +1683,7 @@ function moveAisle(idx, dir) {
 function updateAisleList() {
   const list = document.getElementById('aisle-list');
   if (!list) { renderAisleModal(); return; }
-  list.innerHTML = state.aisles.map((a, idx) => `
-    <li class="aisle-reorder-item" data-idx="${idx}" draggable="false">
-      <span class="drag-handle" style="cursor:grab;touch-action:none"
-        onpointerdown="startDragAisle(event,${idx})">☰</span>
-      <span class="aisle-label">${a}</span>
-      <span class="delete-btn" onclick="removeAisle('${a.replace(/'/g,"\\'")}')">×</span>
-      ${idx > 0 ? `<span class="delete-btn" onclick="moveAisle(${idx},-1)" style="font-size:14px">▲</span>` : '<span style="width:26px"></span>'}
-      ${idx < state.aisles.length-1 ? `<span class="delete-btn" onclick="moveAisle(${idx},1)" style="font-size:14px">▼</span>` : '<span style="width:26px"></span>'}
-    </li>
-  `).join('');
+  list.innerHTML = state.aisles.map((a, idx) => aisleItemHTML(a, idx)).join('');
 }
 
 // Pointer-based drag for aisles
