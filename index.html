@@ -982,22 +982,21 @@ function renderOverlays() {
   const root = document.getElementById('overlay-root');
   root.innerHTML = renderMenu() + renderModals();
 
-  // Block ALL touch events on open overlays so nothing reaches the page behind
-  root.querySelectorAll('.menu-overlay.open, .modal-overlay.open').forEach(ov => {
-    ov.addEventListener('touchstart', e => {
-      // Allow touches INSIDE the sheet/modal content
-      const sheet = ov.querySelector('.menu-sheet, .modal');
-      if (sheet && sheet.contains(e.target)) return;
-      // Block touches on the dark overlay background
-      e.preventDefault();
-    }, {passive: false});
-    ov.addEventListener('touchmove', e => { e.preventDefault(); }, {passive: false});
-  });
+  const hasOpenOverlay = menuOpen || modalStack.length > 0;
 
-  // Allow scrolling inside the sheet content but block it from propagating
-  root.querySelectorAll('.menu-sheet, .modal').forEach(sheet => {
-    sheet.addEventListener('touchmove', e => { e.stopPropagation(); }, {passive: true});
-  });
+  // Lock body scroll when overlay is open - prevents ALL background scrolling on iOS
+  document.body.style.overflow = hasOpenOverlay ? 'hidden' : '';
+  document.body.style.position = hasOpenOverlay ? 'fixed' : '';
+  document.body.style.width = hasOpenOverlay ? '100%' : '';
+  document.body.style.top = hasOpenOverlay ? `-${window._scrollY || 0}px` : '';
+
+  if (hasOpenOverlay && window._scrollY === undefined) {
+    window._scrollY = window.scrollY;
+  }
+  if (!hasOpenOverlay && window._scrollY !== undefined) {
+    window.scrollTo(0, window._scrollY);
+    delete window._scrollY;
+  }
 
   // Attach swipe-to-dismiss on handle zones
   root.querySelectorAll('.sheet-handle-zone').forEach(hz => {
@@ -1950,7 +1949,7 @@ function doShare(mode) {
 // ==============================
 // MENU & MODAL
 // ==============================
-function openMenu() { menuOpen = true; render(); }
+function openMenu() { window._scrollY = window.scrollY; menuOpen = true; render(); }
 function closeMenu(e) {
   if (e && e.target !== e.currentTarget) return;
   menuOpen = false;
@@ -1958,6 +1957,7 @@ function closeMenu(e) {
 }
 
 function pushModal(html) {
+  if (modalStack.length === 0 && !menuOpen) window._scrollY = window.scrollY;
   modalStack.push({html});
   render();
 }
