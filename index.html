@@ -50,6 +50,7 @@
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+button, .chip, .product-item, .product-checkbox, .icon-btn, select { touch-action: manipulation; }
 
 @supports (orientation: portrait) {
   @media screen and (orientation: landscape) and (max-height: 500px) {
@@ -285,6 +286,7 @@ body {
   transition: all 0.2s;
   border: 1.5px solid transparent;
   position: relative;
+  cursor: pointer;
 }
 .product-item:active { transform: scale(0.99); }
 .product-item.selected {
@@ -349,6 +351,9 @@ body {
   justify-content: center;
   cursor: pointer;
   font-family: inherit;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .product-qty-btn:active { transform: scale(0.9); }
 
@@ -440,6 +445,8 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -450,6 +457,8 @@ body {
   max-width: 480px;
   max-height: 85dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 20px 20px calc(var(--safe-bottom) + 20px);
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -461,6 +470,12 @@ body {
   background: var(--border);
   border-radius: 2px;
   margin: 0 auto 16px;
+  cursor: grab;
+}
+.modal-handle-zone {
+  padding: 8px 0 4px;
+  margin: -8px 0 0;
+  cursor: grab;
 }
 
 .modal h2 {
@@ -673,6 +688,8 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 .menu-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -684,6 +701,10 @@ body {
   padding: 20px 20px calc(var(--safe-bottom) + 20px);
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  max-height: 85dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 .menu-overlay.open .menu-sheet { transform: translateY(0); }
 
@@ -720,7 +741,7 @@ body {
 // DATA LAYER
 // ==============================
 const STORAGE_KEY = 'grocery_app_data';
-const DEFAULT_AISLES = ['Fruits & Légumes', 'Boulangerie', 'Produits frais', 'Épicerie', 'Boissons', 'Surgelés', 'Hygiène', 'Autre'];
+const DEFAULT_AISLES = ['Fruits & Légumes', 'Boulangerie', 'Produits laitiers', 'Viandes & Poissons', 'Épicerie', 'Boissons', 'Surgelés', 'Hygiène', 'Autre'];
 
 function loadData() {
   try {
@@ -922,17 +943,17 @@ function render() {
           </div>
           <div class="aisle-items">
             ${items.map(p => `
-              <div class="product-item ${p.selected?'selected':''}" data-id="${p.id}">
-                <div class="product-checkbox" onclick="toggleProduct('${p.id}')">
+              <div class="product-item ${p.selected?'selected':''}" data-id="${p.id}" onclick="toggleProduct('${p.id}')">
+                <div class="product-checkbox">
                   ${p.selected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>' : ''}
                 </div>
-                <div class="product-info" onclick="toggleProduct('${p.id}')">
+                <div class="product-info">
                   <div class="product-name">${p.name}</div>
                 </div>
-                <div class="product-qty-wrapper">
-                  <button class="product-qty-btn" onclick="event.stopPropagation();changeQty('${p.id}',-1)">−</button>
+                <div class="product-qty-wrapper" onclick="event.stopPropagation()">
+                  <button class="product-qty-btn" onclick="changeQty('${p.id}',-1)">−</button>
                   <span class="product-qty">${p.qty||1}</span>
-                  <button class="product-qty-btn" onclick="event.stopPropagation();changeQty('${p.id}',1)">+</button>
+                  <button class="product-qty-btn" onclick="changeQty('${p.id}',1)">+</button>
                 </div>
                 <button class="product-delete" onclick="event.stopPropagation();deleteProduct('${p.id}')" ${p.selected ? 'style="display:none"' : ''}>×</button>
               </div>
@@ -958,7 +979,9 @@ function renderMenu() {
   return `
     <div class="menu-overlay ${menuOpen?'open':''}" onclick="closeMenu(event)">
       <div class="menu-sheet" onclick="event.stopPropagation()">
-        <div class="modal-handle"></div>
+        <div class="modal-handle-zone" onpointerdown="startSheetDrag(event,'menu')">
+          <div class="modal-handle"></div>
+        </div>
         <button class="menu-item" onclick="openBulkAdd()">
           <span class="menu-icon">📋</span>
           <div><div class="menu-label">Ajout en lot</div><div class="menu-desc">Coller une liste de produits</div></div>
@@ -1009,7 +1032,9 @@ function renderModals() {
   return modalStack.map((m, i) => `
     <div class="modal-overlay ${i === modalStack.length - 1 ? 'open' : ''}" onclick="closeTopModal()" style="z-index:${500+i}">
       <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-handle"></div>
+        <div class="modal-handle-zone" onpointerdown="startSheetDrag(event,'modal')">
+          <div class="modal-handle"></div>
+        </div>
         ${m.html}
       </div>
     </div>
@@ -1141,9 +1166,25 @@ function confirmDelete(id) {
 }
 
 function deselectAll() {
+  closeMenu();
+  const count = state.products.filter(p => p.selected).length;
+  if (count === 0) { showToast('Aucun produit sélectionné'); return; }
+  pushModal(`
+    <h2>Tout désélectionner ?</h2>
+    <p style="color:var(--text2);margin-bottom:16px">
+      ${count} produit${count>1?'s':''} sélectionné${count>1?'s':''} ser${count>1?'ont':'a'} désélectionné${count>1?'s':''}.
+    </p>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn primary" onclick="confirmDeselectAll()">Désélectionner</button>
+    </div>
+  `);
+}
+
+function confirmDeselectAll() {
   state.products.forEach(p => p.selected = false);
   saveData();
-  closeMenu();
+  closeTopModal();
   render();
   showToast('Sélection remise à zéro');
 }
@@ -1539,9 +1580,25 @@ function removeAisle(name) {
     showToast(`Impossible : ${prods.length} produit${prods.length>1?'s':''} dans ce rayon`);
     return;
   }
+  // Push a confirm modal on top
+  pushModal(`
+    <h2>Supprimer le rayon ?</h2>
+    <p style="color:var(--text2);margin-bottom:16px">Voulez-vous supprimer le rayon <strong>${name}</strong> ?</p>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn danger" onclick="confirmRemoveAisle('${name.replace(/'/g,"\\'")}')">Supprimer</button>
+    </div>
+  `);
+}
+
+function confirmRemoveAisle(name) {
   state.aisles = state.aisles.filter(a => a !== name);
   saveData();
-  renderAisleModal();
+  closeTopModal(); // close confirm
+  // Re-render the aisle modal underneath
+  if (modalStack.length > 0 && modalStack[modalStack.length-1]._isAisle) {
+    renderAisleModal();
+  }
   showToast(`Rayon supprimé`);
 }
 
@@ -1556,19 +1613,43 @@ function moveAisle(idx, dir) {
 // Pointer-based drag for aisles
 let dragAisleIdx = null;
 let dragAisleStartY = 0;
+let dragAisleCurrentY = 0;
 let dragAisleEl = null;
+let dragAisleListEl = null;
 
 function startDragAisle(e, idx) {
   e.preventDefault();
   dragAisleIdx = idx;
   dragAisleStartY = e.clientY;
-  const list = document.getElementById('aisle-list');
-  dragAisleEl = list?.children[idx];
-  if (dragAisleEl) dragAisleEl.style.opacity = '0.5';
+  dragAisleCurrentY = e.clientY;
+  dragAisleListEl = document.getElementById('aisle-list');
+  if (!dragAisleListEl) return;
+  dragAisleEl = dragAisleListEl.children[idx];
+  if (!dragAisleEl) return;
+
+  // Visual feedback: highlight the dragged item
+  dragAisleEl.style.background = 'var(--accent2-light)';
+  dragAisleEl.style.borderColor = 'var(--accent2)';
+  dragAisleEl.style.zIndex = '10';
+  dragAisleEl.style.position = 'relative';
+  dragAisleEl.style.transition = 'none';
 
   const onMove = (ev) => {
-    const delta = ev.clientY - dragAisleStartY;
-    const itemH = 54;
+    ev.preventDefault();
+    dragAisleCurrentY = ev.clientY;
+    const delta = dragAisleCurrentY - dragAisleStartY;
+
+    // Visual: translate the element to follow finger
+    if (dragAisleEl) {
+      dragAisleEl.style.transform = `translateY(${delta}px)`;
+    }
+
+    // Calculate step based on actual item heights
+    const items = dragAisleListEl.children;
+    let itemH = 54;
+    if (items.length > 0) {
+      itemH = items[0].getBoundingClientRect().height + 6; // 6 = margin-bottom
+    }
     const steps = Math.round(delta / itemH);
     if (steps !== 0) {
       const newIdx = Math.max(0, Math.min(state.aisles.length - 1, dragAisleIdx + steps));
@@ -1576,9 +1657,10 @@ function startDragAisle(e, idx) {
         const [item] = state.aisles.splice(dragAisleIdx, 1);
         state.aisles.splice(newIdx, 0, item);
         dragAisleIdx = newIdx;
-        dragAisleStartY = ev.clientY;
+        dragAisleStartY = dragAisleCurrentY;
         saveData();
-        renderAisleModal();
+        // Re-render list but keep drag state
+        renderAisleModalKeepDrag(newIdx);
       }
     }
   };
@@ -1586,12 +1668,49 @@ function startDragAisle(e, idx) {
   const onUp = () => {
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
-    if (dragAisleEl) dragAisleEl.style.opacity = '1';
+    document.removeEventListener('pointercancel', onUp);
+    // Reset visual state
+    if (dragAisleEl) {
+      dragAisleEl.style.transform = '';
+      dragAisleEl.style.background = '';
+      dragAisleEl.style.borderColor = '';
+      dragAisleEl.style.zIndex = '';
+      dragAisleEl.style.position = '';
+      dragAisleEl.style.transition = '';
+    }
     dragAisleIdx = null;
+    dragAisleEl = null;
+    dragAisleListEl = null;
+    renderAisleModal();
   };
 
-  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointermove', onMove, {passive: false});
   document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+function renderAisleModalKeepDrag(activeIdx) {
+  const list = document.getElementById('aisle-list');
+  if (!list) return;
+  list.innerHTML = state.aisles.map((a, idx) => `
+    <li class="aisle-reorder-item" data-idx="${idx}" draggable="false"
+        style="${idx === activeIdx ? 'background:var(--accent2-light);border-color:var(--accent2);' : ''}">
+      <span class="drag-handle" style="cursor:grab;touch-action:none"
+        onpointerdown="startDragAisle(event,${idx})">☰</span>
+      <span class="aisle-label">${a}</span>
+      <span class="delete-btn" onclick="removeAisle('${a.replace(/'/g,"\\'")}')">×</span>
+      ${idx > 0 ? `<span class="delete-btn" onclick="moveAisle(${idx},-1)" style="font-size:14px">▲</span>` : '<span style="width:26px"></span>'}
+      ${idx < state.aisles.length-1 ? `<span class="delete-btn" onclick="moveAisle(${idx},1)" style="font-size:14px">▼</span>` : '<span style="width:26px"></span>'}
+    </li>
+  `).join('');
+  // Re-acquire drag el
+  dragAisleListEl = list;
+  dragAisleEl = list.children[activeIdx];
+  if (dragAisleEl) {
+    dragAisleEl.style.zIndex = '10';
+    dragAisleEl.style.position = 'relative';
+    dragAisleEl.style.transition = 'none';
+  }
 }
 
 // ==============================
@@ -1690,48 +1809,104 @@ function shareSelected() {
   closeMenu();
   const selected = state.products.filter(p => p.selected);
   if (selected.length === 0) { showToast('Aucun produit sélectionné'); return; }
-
-  // Group by aisle
-  const grouped = new Map();
-  state.aisles.forEach(a => grouped.set(a, []));
-  selected.forEach(p => {
-    if (!grouped.has(p.aisle)) grouped.set(p.aisle, []);
-    grouped.get(p.aisle).push(p);
-  });
-
-  let text = '🛒 Liste de courses\n\n';
-  grouped.forEach((items, aisle) => {
-    if (items.length === 0) return;
-    text += `📍 ${aisle}\n`;
-    items.forEach(p => {
-      text += `  • ${p.name}${p.qty > 1 ? ' (×'+p.qty+')' : ''}\n`;
-    });
-    text += '\n';
-  });
-
-  shareText(text, 'Liste de courses');
+  openShareFormatModal('selected');
 }
 
 function shareAll() {
   closeMenu();
   if (state.products.length === 0) { showToast('Liste vide'); return; }
+  openShareFormatModal('all');
+}
 
-  const grouped = new Map();
-  state.aisles.forEach(a => grouped.set(a, []));
-  state.products.forEach(p => {
-    if (!grouped.has(p.aisle)) grouped.set(p.aisle, []);
-    grouped.get(p.aisle).push(p);
-  });
+function openShareFormatModal(mode) {
+  pushModal(`
+    <h2>Format de partage</h2>
+    <div class="modal-field">
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer">
+        <input type="checkbox" id="share-aisles" checked style="width:18px;height:18px;accent-color:var(--accent2)">
+        Grouper par rayon
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer">
+        <input type="checkbox" id="share-bullets" checked style="width:18px;height:18px;accent-color:var(--accent2)">
+        Avec puces (•)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer">
+        <input type="checkbox" id="share-qty" ${mode === 'selected' ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent2)">
+        Afficher les quantités
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer">
+        <input type="checkbox" id="share-emoji" checked style="width:18px;height:18px;accent-color:var(--accent2)">
+        Avec emojis
+      </label>
+    </div>
+    <div id="share-preview" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text2);max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-bottom:14px;font-family:monospace"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn primary" onclick="doShare('${mode}')">Partager</button>
+    </div>
+  `);
+  // Wire up live preview
+  const updatePreview = () => {
+    const preview = document.getElementById('share-preview');
+    if (preview) preview.textContent = buildShareText(mode);
+  };
+  setTimeout(() => {
+    ['share-aisles','share-bullets','share-qty','share-emoji'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', updatePreview);
+    });
+    updatePreview();
+  }, 50);
+}
 
-  let text = '📋 Tous les produits\n\n';
-  grouped.forEach((items, aisle) => {
-    if (items.length === 0) return;
-    text += `📍 ${aisle}\n`;
-    items.forEach(p => { text += `  • ${p.name}\n`; });
-    text += '\n';
-  });
+function buildShareText(mode) {
+  const withAisles = document.getElementById('share-aisles')?.checked ?? true;
+  const withBullets = document.getElementById('share-bullets')?.checked ?? true;
+  const withQty = document.getElementById('share-qty')?.checked ?? false;
+  const withEmoji = document.getElementById('share-emoji')?.checked ?? true;
 
-  shareText(text, 'Tous mes produits');
+  const products = mode === 'selected'
+    ? state.products.filter(p => p.selected)
+    : [...state.products];
+
+  const title = mode === 'selected'
+    ? (withEmoji ? '🛒 Liste de courses' : 'Liste de courses')
+    : (withEmoji ? '📋 Tous les produits' : 'Tous les produits');
+
+  let text = title + '\n\n';
+
+  if (withAisles) {
+    const grouped = new Map();
+    state.aisles.forEach(a => grouped.set(a, []));
+    products.forEach(p => {
+      if (!grouped.has(p.aisle)) grouped.set(p.aisle, []);
+      grouped.get(p.aisle).push(p);
+    });
+    grouped.forEach((items, aisle) => {
+      if (items.length === 0) return;
+      text += (withEmoji ? '📍 ' : '') + aisle + '\n';
+      items.forEach(p => {
+        const bullet = withBullets ? '  • ' : '  ';
+        const qty = (withQty && p.selected && p.qty > 1) ? ` (×${p.qty})` : '';
+        text += bullet + p.name + qty + '\n';
+      });
+      text += '\n';
+    });
+  } else {
+    products.forEach(p => {
+      const bullet = withBullets ? '• ' : '';
+      const qty = (withQty && p.selected && p.qty > 1) ? ` (×${p.qty})` : '';
+      text += bullet + p.name + qty + '\n';
+    });
+  }
+
+  return text.trim();
+}
+
+function doShare(mode) {
+  const text = buildShareText(mode);
+  closeTopModal();
+  shareText(text, mode === 'selected' ? 'Liste de courses' : 'Tous mes produits');
 }
 
 // ==============================
@@ -1752,6 +1927,51 @@ function pushModal(html) {
 function closeTopModal() {
   modalStack.pop();
   render();
+}
+
+// ==============================
+// SHEET DRAG-TO-DISMISS
+// ==============================
+function startSheetDrag(e, type) {
+  e.preventDefault();
+  const startY = e.clientY;
+  let currentDelta = 0;
+  const sheet = e.target.closest(type === 'menu' ? '.menu-sheet' : '.modal');
+  if (!sheet) return;
+
+  sheet.style.transition = 'none';
+
+  const onMove = (ev) => {
+    ev.preventDefault();
+    currentDelta = Math.max(0, ev.clientY - startY);
+    sheet.style.transform = `translateY(${currentDelta}px)`;
+  };
+
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    sheet.style.transition = '';
+
+    if (currentDelta > 80) {
+      // Dismiss
+      sheet.style.transform = 'translateY(100%)';
+      setTimeout(() => {
+        if (type === 'menu') {
+          menuOpen = false;
+          render();
+        } else {
+          closeTopModal();
+        }
+      }, 200);
+    } else {
+      sheet.style.transform = 'translateY(0)';
+    }
+  };
+
+  document.addEventListener('pointermove', onMove, {passive: false});
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
 }
 
 // ==============================
