@@ -860,6 +860,10 @@ let collapsedAisles = new Set();
 // ==============================
 function render() {
   const app = document.getElementById('app');
+  // Preserve scroll position across re-renders
+  const oldContent = app.querySelector('.content');
+  const savedScroll = oldContent ? oldContent.scrollTop : 0;
+
   const selectedCount = state.products.filter(p => p.selected).length;
 
   let products = [...state.products];
@@ -974,6 +978,10 @@ function render() {
       </button>
     </div>
   `;
+
+  // Restore scroll position
+  const newContent = app.querySelector('.content');
+  if (newContent) newContent.scrollTop = savedScroll;
 
   renderOverlays();
 }
