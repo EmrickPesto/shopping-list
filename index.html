@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Courses">
+<meta name="theme-color" content="#f8f5f0">
+<meta name="screen-orientation" content="portrait">
+<title>Mes Courses</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23f8f5f0' width='100' height='100' rx='20'/><text y='70' x='50' text-anchor='middle' font-size='60'>🛒</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8f5f0;
+  --bg2: #ffffff;
+  --bg3: #f0ebe4;
+  --text: #2c2416;
+  --text2: #6b5d4d;
+  --text3: #a09282;
+  --accent: #c45d3e;
+  --accent-light: #f4ddd6;
+  --accent2: #3e8a7e;
+  --accent2-light: #d6f0eb;
+  --border: #e8e0d6;
+  --shadow: rgba(44,36,22,0.08);
+  --shadow2: rgba(44,36,22,0.15);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+[data-theme="dark"] {
+  --bg: #1a1612;
+  --bg2: #252019;
+  --bg3: #302a22;
+  --text: #ede6dc;
+  --text2: #a09282;
+  --text3: #6b5d4d;
+  --accent: #e07a5f;
+  --accent-light: #3d2820;
+  --accent2: #5fbfae;
+  --accent2-light: #1a3330;
+  --border: #3d3529;
+  --shadow: rgba(0,0,0,0.2);
+  --shadow2: rgba(0,0,0,0.35);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+@supports (orientation: portrait) {
+  @media screen and (orientation: landscape) and (max-height: 500px) {
+    html { transform: rotate(-90deg); transform-origin: left top;
+      width: 100vh; height: 100vw; overflow-x: hidden; position: absolute; top: 100%; left: 0; }
+  }
+}
+
+body {
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Header */
+.header {
+  padding: calc(var(--safe-top) + 12px) 20px 12px;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg3);
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+.icon-btn:active { transform: scale(0.92); }
+.icon-btn.active { background: var(--accent); color: #fff; }
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 14px;
+  height: 44px;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+.search-bar:focus-within { border-color: var(--accent); }
+.search-bar svg { flex-shrink:0; color: var(--text3); }
+.search-bar input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
+.search-bar input::placeholder { color: var(--text3); }
+
+/* Filter chips */
+.filters {
+  display: flex;
+  gap: 8px;
+  padding: 10px 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.filters::-webkit-scrollbar { display: none; }
+
+.chip {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.chip:active { transform: scale(0.96); }
+.chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.chip.active-green {
+  background: var(--accent2);
+  color: #fff;
+  border-color: var(--accent2);
+}
+
+.selected-filter-btn {
+  position: relative;
+}
+.selected-filter-btn .badge {
+  background: #fff;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+.chip:not(.active) .badge {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* Sort dropdown */
+.sort-select {
+  padding: 7px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b5d4d' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+/* Main content */
+.content {
+  flex: 1;
+  padding: 4px 16px calc(var(--safe-bottom) + 90px);
+  overflow-y: auto;
+}
+
+/* Aisle section */
+.aisle-section {
+  margin-bottom: 8px;
+}
+
+.aisle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 4px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.aisle-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aisle-count {
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.aisle-collapse-icon {
+  color: var(--text3);
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+.aisle-section.collapsed .aisle-collapse-icon { transform: rotate(-90deg); }
+.aisle-section.collapsed .aisle-items { display: none; }
+
+/* Product item */
+.product-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  gap: 12px;
+  transition: all 0.2s;
+  border: 1.5px solid transparent;
+  position: relative;
+}
+.product-item:active { transform: scale(0.99); }
+.product-item.selected {
+  border-color: var(--accent2);
+  background: var(--accent2-light);
+}
+
+.product-checkbox {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg2);
+}
+.product-item.selected .product-checkbox {
+  background: var(--accent2);
+  border-color: var(--accent2);
+}
+
+.product-info {
+  flex: 1;
+  min-width: 0;
+}
+.product-name {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.product-item.selected .product-name {
+  color: var(--accent2);
+}
+
+.product-qty-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.product-item.selected .product-qty-wrapper {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.product-qty-btn {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+}
+.product-qty-btn:active { transform: scale(0.9); }
+
+.product-qty {
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+  color: var(--accent2);
+}
+
+.product-delete {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.product-delete:active { color: var(--accent); background: var(--accent-light); }
+
+/* Frequency indicator */
+.freq-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  margin-right: 4px;
+  opacity: 0.5;
+}
+.freq-dot.high { opacity: 1; width: 5px; height: 5px; }
+
+/* FAB */
+.fab {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 24px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 480px;
+  width: calc(100% - 40px);
+  display: flex;
+  gap: 10px;
+  z-index: 200;
+}
+
+.fab-btn {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  border: none;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px var(--shadow2);
+}
+.fab-btn:active { transform: scale(0.97); }
+.fab-btn.primary {
+  background: var(--accent);
+  color: #fff;
+}
+.fab-btn.secondary {
+  background: var(--bg2);
+  color: var(--text);
+  flex: 0;
+  padding: 14px 16px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 500;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85dvh;
+  overflow-y: auto;
+  padding: 20px 20px calc(var(--safe-bottom) + 20px);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.modal h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  margin-bottom: 16px;
+}
+
+.modal-field {
+  margin-bottom: 14px;
+}
+.modal-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.modal-field input, .modal-field select, .modal-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus {
+  border-color: var(--accent);
+}
+.modal-field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.modal-btn {
+  flex: 1;
+  padding: 13px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg2);
+  color: var(--text);
+  transition: all 0.2s;
+}
+.modal-btn:active { transform: scale(0.97); }
+.modal-btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.modal-btn.danger {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Aisle pills in modal */
+.aisle-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.aisle-pill {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--bg2);
+  font-size: 13px;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.aisle-pill .remove-aisle {
+  font-size: 14px;
+  opacity: 0.5;
+}
+.aisle-pill:active { transform: scale(0.95); }
+
+/* Aisle reorder */
+.aisle-reorder-list {
+  list-style: none;
+}
+.aisle-reorder-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  gap: 12px;
+  border: 1.5px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+}
+.aisle-reorder-item:active { cursor: grabbing; }
+.aisle-reorder-item .drag-handle {
+  color: var(--text3);
+  font-size: 18px;
+}
+.aisle-reorder-item .aisle-label { flex: 1; font-weight: 500; }
+.aisle-reorder-item .delete-btn {
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+}
+
+/* Match suggestion */
+.match-suggestion {
+  padding: 10px 14px;
+  background: var(--bg2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border: 1.5px solid var(--border);
+}
+.match-suggestion .match-text {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.match-suggestion .match-text em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 600;
+}
+.match-suggestion .match-actions {
+  display: flex;
+  gap: 6px;
+}
+.match-suggestion .match-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+}
+.match-suggestion .match-btn.accept {
+  background: var(--accent2);
+  color: #fff;
+  border-color: var(--accent2);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 90px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text3);
+}
+.empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 15px; line-height: 1.5; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Animation */
+@keyframes slideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.aisle-section { animation: slideIn 0.3s ease; }
+
+/* Menu overlay */
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.menu-overlay.open { opacity: 1; pointer-events: all; }
+
+.menu-sheet {
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-width: 480px;
+  padding: 20px 20px calc(var(--safe-bottom) + 20px);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.menu-overlay.open .menu-sheet { transform: translateY(0); }
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--text);
+  text-align: left;
+}
+.menu-item:active { background: var(--bg3); }
+.menu-item .menu-icon { font-size: 20px; width: 28px; text-align: center; }
+.menu-item .menu-label { font-weight: 500; }
+.menu-item .menu-desc { font-size: 12px; color: var(--text3); }
+
+.menu-divider { height: 1px; background: var(--border); margin: 6px 0; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ==============================
+// DATA LAYER
+// ==============================
+const STORAGE_KEY = 'grocery_app_data';
+const DEFAULT_AISLES = ['Fruits & Légumes', 'Boulangerie', 'Produits laitiers', 'Viandes & Poissons', 'Épicerie', 'Boissons', 'Surgelés', 'Hygiène', 'Autre'];
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      // Migration: add frequency if missing
+      if (d.products) d.products.forEach(p => {
+        if (p.frequency === undefined) p.frequency = 0;
+        if (p.qty === undefined) p.qty = 1;
+      });
+      return d;
+    }
+  } catch(e) {}
+  return { aisles: [...DEFAULT_AISLES], products: [], sortMode: 'frequency', theme: 'light' };
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadData();
+// Snapshot frequencies at app open (for stable sort during session)
+let openFrequencies = {};
+state.products.forEach(p => { openFrequencies[p.id] = p.frequency || 0; });
+
+// ==============================
+// UTILS
+// ==============================
+let idCounter = Date.now();
+function newId() { return 'p' + (idCounter++); }
+
+function normalize(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
+
+function similarity(a, b) {
+  const na = normalize(a), nb = normalize(b);
+  if (na === nb) return 1;
+  if (na.includes(nb) || nb.includes(na)) return 0.8;
+  // Levenshtein-based
+  const m = na.length, n = nb.length;
+  if (Math.abs(m - n) > Math.max(m, n) * 0.5) return 0;
+  const dp = Array.from({length: m+1}, (_,i) => {
+    const row = new Array(n+1);
+    row[0] = i;
+    return row;
+  });
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(na[i-1]!==nb[j-1]?1:0));
+  const dist = dp[m][n];
+  return 1 - dist / Math.max(m, n);
+}
+
+function findSimilar(name, excludeId) {
+  const matches = [];
+  state.products.forEach(p => {
+    if (p.id === excludeId) return;
+    const sim = similarity(name, p.name);
+    if (sim >= 0.6) matches.push({product: p, similarity: sim});
+  });
+  matches.sort((a,b) => b.similarity - a.similarity);
+  return matches.slice(0, 3);
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.content = theme === 'dark' ? '#1a1612' : '#f8f5f0';
+}
+applyTheme(state.theme || 'light');
+
+// ==============================
+// APP STATE
+// ==============================
+let currentFilter = 'all'; // 'all' | 'selected'
+let searchQuery = '';
+let currentSort = state.sortMode || 'frequency';
+let menuOpen = false;
+let modalStack = []; // stack of modal configs
+let collapsedAisles = new Set();
+
+// ==============================
+// RENDER
+// ==============================
+function render() {
+  const app = document.getElementById('app');
+  const selectedCount = state.products.filter(p => p.selected).length;
+
+  let products = [...state.products];
+
+  // Filter
+  if (currentFilter === 'selected') {
+    products = products.filter(p => p.selected);
+  }
+
+  // Search
+  if (searchQuery) {
+    const q = normalize(searchQuery);
+    products = products.filter(p => normalize(p.name).includes(q) || normalize(p.aisle).includes(q));
+  }
+
+  // Group by aisle in aisle order
+  const grouped = new Map();
+  state.aisles.forEach(a => grouped.set(a, []));
+  products.forEach(p => {
+    if (!grouped.has(p.aisle)) grouped.set(p.aisle, []);
+    grouped.get(p.aisle).push(p);
+  });
+
+  // Sort products within aisles
+  grouped.forEach((items, aisle) => {
+    if (currentSort === 'alpha') {
+      items.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
+    } else if (currentSort === 'frequency') {
+      items.sort((a,b) => (openFrequencies[b.id]||0) - (openFrequencies[a.id]||0) || a.name.localeCompare(b.name, 'fr'));
+    }
+  });
+
+  // Remove empty aisles from display
+  const visibleAisles = [];
+  grouped.forEach((items, aisle) => {
+    if (items.length > 0) visibleAisles.push({aisle, items});
+  });
+
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-top">
+        <h1>Mes Courses</h1>
+        <div class="header-actions">
+          <button class="icon-btn" onclick="toggleTheme()" title="Thème">
+            ${state.theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+          <button class="icon-btn" onclick="openMenu()" title="Menu">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="4" cy="10" r="1.5" fill="currentColor"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="16" cy="10" r="1.5" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Rechercher un produit..." value="${searchQuery}" oninput="onSearch(this.value)">
+        ${searchQuery ? '<span style="cursor:pointer;color:var(--text3);font-size:18px" onclick="onSearch(\'\')">✕</span>' : ''}
+      </div>
+    </div>
+
+    <div class="filters">
+      <button class="chip selected-filter-btn ${currentFilter==='selected'?'active':''}" onclick="toggleSelectedFilter()">
+        🛒 À acheter <span class="badge">${selectedCount}</span>
+      </button>
+      <select class="sort-select" onchange="changeSort(this.value)">
+        <option value="frequency" ${currentSort==='frequency'?'selected':''}>★ Fréquence</option>
+        <option value="alpha" ${currentSort==='alpha'?'selected':''}>A→Z Alphabétique</option>
+      </select>
+    </div>
+
+    <div class="content">
+      ${visibleAisles.length === 0 ? `
+        <div class="empty-state">
+          <div class="emoji">${currentFilter==='selected' ? '✅' : searchQuery ? '🔍' : '🛒'}</div>
+          <p>${currentFilter==='selected' ? 'Aucun produit sélectionné.<br>Touchez un produit pour l\'ajouter à votre liste.' :
+              searchQuery ? 'Aucun résultat pour cette recherche.' :
+              'Votre liste est vide.<br>Ajoutez des produits pour commencer !'}</p>
+        </div>
+      ` : visibleAisles.map(({aisle, items}) => `
+        <div class="aisle-section ${collapsedAisles.has(aisle)?'collapsed':''}" data-aisle="${aisle}">
+          <div class="aisle-header" onclick="toggleAisle('${aisle.replace(/'/g, "\\'")}')">
+            <span class="aisle-name">
+              ${aisle}
+              <span class="aisle-count">${items.length} produit${items.length>1?'s':''}</span>
+            </span>
+            <span class="aisle-collapse-icon">▼</span>
+          </div>
+          <div class="aisle-items">
+            ${items.map(p => `
+              <div class="product-item ${p.selected?'selected':''}" data-id="${p.id}">
+                <div class="product-checkbox" onclick="toggleProduct('${p.id}')">
+                  ${p.selected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>' : ''}
+                </div>
+                <div class="product-info" onclick="toggleProduct('${p.id}')">
+                  <div class="product-name">${p.name}</div>
+                </div>
+                <div class="product-qty-wrapper">
+                  <button class="product-qty-btn" onclick="event.stopPropagation();changeQty('${p.id}',-1)">−</button>
+                  <span class="product-qty">${p.qty||1}</span>
+                  <button class="product-qty-btn" onclick="event.stopPropagation();changeQty('${p.id}',1)">+</button>
+                </div>
+                <button class="product-delete" onclick="event.stopPropagation();deleteProduct('${p.id}')">×</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="fab">
+      <button class="fab-btn primary" onclick="openAddProduct()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Ajouter
+      </button>
+    </div>
+
+    ${renderMenu()}
+    ${renderModals()}
+  `;
+}
+
+function renderMenu() {
+  return `
+    <div class="menu-overlay ${menuOpen?'open':''}" onclick="closeMenu(event)">
+      <div class="menu-sheet" onclick="event.stopPropagation()">
+        <div class="modal-handle"></div>
+        <button class="menu-item" onclick="openBulkAdd()">
+          <span class="menu-icon">📋</span>
+          <div><div class="menu-label">Ajout en lot</div><div class="menu-desc">Coller une liste de produits</div></div>
+        </button>
+        <button class="menu-item" onclick="openBulkSelect()">
+          <span class="menu-icon">✅</span>
+          <div><div class="menu-label">Sélection par texte</div><div class="menu-desc">Sélectionner depuis un message copié</div></div>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" onclick="openManageAisles()">
+          <span class="menu-icon">🏪</span>
+          <div><div class="menu-label">Gérer les rayons</div><div class="menu-desc">Ajouter, supprimer, réordonner</div></div>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" onclick="exportJSON()">
+          <span class="menu-icon">💾</span>
+          <div><div class="menu-label">Exporter (JSON)</div><div class="menu-desc">Sauvegarde complète</div></div>
+        </button>
+        <button class="menu-item" onclick="importJSON()">
+          <span class="menu-icon">📂</span>
+          <div><div class="menu-label">Importer (JSON)</div><div class="menu-desc">Restaurer une sauvegarde</div></div>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" onclick="shareSelected()">
+          <span class="menu-icon">📤</span>
+          <div><div class="menu-label">Partager la sélection</div><div class="menu-desc">Liste des produits à acheter</div></div>
+        </button>
+        <button class="menu-item" onclick="shareAll()">
+          <span class="menu-icon">📄</span>
+          <div><div class="menu-label">Partager tout</div><div class="menu-desc">Liste complète en texte</div></div>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" onclick="deselectAll()">
+          <span class="menu-icon">🔄</span>
+          <div><div class="menu-label">Tout désélectionner</div><div class="menu-desc">Remettre à zéro la sélection</div></div>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderModals() {
+  return modalStack.map((m, i) => `
+    <div class="modal-overlay ${i === modalStack.length - 1 ? 'open' : ''}" onclick="closeTopModal()" style="z-index:${500+i}">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-handle"></div>
+        ${m.html}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==============================
+// ACTIONS
+// ==============================
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(state.theme);
+  saveData();
+  render();
+}
+
+function onSearch(v) {
+  searchQuery = v;
+  render();
+  // Re-focus
+  setTimeout(() => {
+    const inp = document.querySelector('.search-bar input');
+    if (inp && v !== '') { inp.focus(); inp.setSelectionRange(v.length, v.length); }
+  }, 10);
+}
+
+function toggleSelectedFilter() {
+  currentFilter = currentFilter === 'selected' ? 'all' : 'selected';
+  render();
+}
+
+function changeSort(v) {
+  currentSort = v;
+  state.sortMode = v;
+  saveData();
+  render();
+}
+
+function toggleAisle(name) {
+  if (collapsedAisles.has(name)) collapsedAisles.delete(name);
+  else collapsedAisles.add(name);
+  render();
+}
+
+function toggleProduct(id) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  p.selected = !p.selected;
+  if (p.selected) {
+    p.frequency = (p.frequency || 0) + 1;
+    p.qty = p.qty || 1;
+  }
+  saveData();
+  render();
+}
+
+function changeQty(id, delta) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  p.qty = Math.max(1, (p.qty || 1) + delta);
+  saveData();
+  render();
+}
+
+function deleteProduct(id) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  pushModal(`
+    <h2>Supprimer ?</h2>
+    <p style="color:var(--text2);margin-bottom:16px">Voulez-vous supprimer <strong>${p.name}</strong> de la liste ?</p>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn danger" onclick="confirmDelete('${id}')">Supprimer</button>
+    </div>
+  `);
+}
+
+function confirmDelete(id) {
+  state.products = state.products.filter(x => x.id !== id);
+  saveData();
+  closeTopModal();
+  render();
+  showToast('Produit supprimé');
+}
+
+function deselectAll() {
+  state.products.forEach(p => p.selected = false);
+  saveData();
+  closeMenu();
+  render();
+  showToast('Sélection remise à zéro');
+}
+
+// ==============================
+// ADD PRODUCT
+// ==============================
+function openAddProduct() {
+  pushModal(`
+    <h2>Ajouter un produit</h2>
+    <div class="modal-field">
+      <label>Nom du produit</label>
+      <input type="text" id="add-name" placeholder="Ex: Tomates cerises" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Rayon</label>
+      <select id="add-aisle">
+        ${state.aisles.map(a => `<option value="${a}">${a}</option>`).join('')}
+      </select>
+    </div>
+    <div id="add-similar"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn primary" onclick="confirmAddProduct()">Ajouter</button>
+    </div>
+  `);
+  setTimeout(() => {
+    const inp = document.getElementById('add-name');
+    if (inp) {
+      inp.focus();
+      inp.addEventListener('input', () => checkSimilarOnAdd());
+    }
+  }, 100);
+}
+
+function checkSimilarOnAdd() {
+  const name = document.getElementById('add-name')?.value?.trim();
+  const container = document.getElementById('add-similar');
+  if (!container || !name || name.length < 2) { if(container) container.innerHTML=''; return; }
+  const matches = findSimilar(name, null);
+  if (matches.length === 0) { container.innerHTML=''; return; }
+  container.innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Produits similaires :</div>
+    ${matches.map(m => `
+      <div class="match-suggestion">
+        <div class="match-text"><em>${m.product.name}</em> (${m.product.aisle})</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function confirmAddProduct() {
+  const name = document.getElementById('add-name')?.value?.trim();
+  const aisle = document.getElementById('add-aisle')?.value;
+  if (!name) { showToast('Entrez un nom de produit'); return; }
+
+  // Check exact duplicate
+  const dup = state.products.find(p => normalize(p.name) === normalize(name));
+  if (dup) { showToast('Ce produit existe déjà !'); return; }
+
+  // Check similar
+  const matches = findSimilar(name, null);
+  if (matches.length > 0 && matches[0].similarity >= 0.7) {
+    const m = matches[0];
+    closeTopModal();
+    pushModal(`
+      <h2>Produit similaire trouvé</h2>
+      <p style="color:var(--text2);margin-bottom:16px">
+        <strong>${name}</strong> ressemble à <strong>${m.product.name}</strong> (${m.product.aisle}).
+        <br>Voulez-vous quand même ajouter ?
+      </p>
+      <div class="modal-actions">
+        <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+        <button class="modal-btn primary" onclick="forceAddProduct('${name.replace(/'/g,"\\'")}','${aisle.replace(/'/g,"\\'")}')">Ajouter quand même</button>
+      </div>
+    `);
+    return;
+  }
+
+  addProductToState(name, aisle);
+  closeTopModal();
+  render();
+  showToast(`${name} ajouté`);
+}
+
+function forceAddProduct(name, aisle) {
+  addProductToState(name, aisle);
+  closeTopModal();
+  render();
+  showToast(`${name} ajouté`);
+}
+
+function addProductToState(name, aisle) {
+  const id = newId();
+  state.products.push({ id, name, aisle, selected: false, frequency: 0, qty: 1 });
+  openFrequencies[id] = 0;
+  saveData();
+}
+
+// ==============================
+// BULK ADD
+// ==============================
+function openBulkAdd() {
+  closeMenu();
+  pushModal(`
+    <h2>Ajout en lot</h2>
+    <div class="modal-field">
+      <label>Rayon pour ces produits</label>
+      <select id="bulk-aisle">
+        ${state.aisles.map(a => `<option value="${a}">${a}</option>`).join('')}
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Produits (un par ligne)</label>
+      <textarea id="bulk-text" placeholder="Tomates\nOignons\nCarottes"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn primary" onclick="confirmBulkAdd()">Ajouter</button>
+    </div>
+  `);
+}
+
+function confirmBulkAdd() {
+  const aisle = document.getElementById('bulk-aisle')?.value;
+  const text = document.getElementById('bulk-text')?.value || '';
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  if (lines.length === 0) { showToast('Entrez au moins un produit'); return; }
+
+  let added = 0, skipped = 0;
+  const warnings = [];
+
+  lines.forEach(name => {
+    const dup = state.products.find(p => normalize(p.name) === normalize(name));
+    if (dup) { skipped++; return; }
+    const sim = findSimilar(name, null);
+    if (sim.length > 0 && sim[0].similarity >= 0.85) {
+      warnings.push({name, match: sim[0].product.name});
+      return;
+    }
+    addProductToState(name, aisle);
+    added++;
+  });
+
+  closeTopModal();
+
+  if (warnings.length > 0) {
+    let html = `<h2>Doublons possibles</h2><div style="margin-bottom:16px">`;
+    warnings.forEach(w => {
+      html += `
+        <div class="match-suggestion">
+          <div class="match-text"><em>${w.name}</em> ressemble à <em>${w.match}</em></div>
+          <div class="match-actions">
+            <button class="match-btn" onclick="skipBulkItem(this)">Ignorer</button>
+            <button class="match-btn accept" onclick="forceBulkItem(this,'${w.name.replace(/'/g,"\\'")}','${aisle.replace(/'/g,"\\'")}')">Ajouter quand même</button>
+          </div>
+        </div>
+      `;
+    });
+    html += `</div><div class="modal-actions"><button class="modal-btn primary" onclick="closeTopModal();render();">Terminé</button></div>`;
+    pushModal(html);
+  }
+
+  render();
+  showToast(`${added} produit${added>1?'s':''} ajouté${added>1?'s':''}${skipped?' ('+skipped+' doublon'+((skipped>1)?'s':'')+')':''}`);
+}
+
+function skipBulkItem(btn) {
+  btn.closest('.match-suggestion').style.display = 'none';
+}
+
+function forceBulkItem(btn, name, aisle) {
+  addProductToState(name, aisle);
+  btn.closest('.match-suggestion').style.display = 'none';
+  saveData();
+  showToast(`${name} ajouté`);
+}
+
+// ==============================
+// BULK SELECT
+// ==============================
+function openBulkSelect() {
+  closeMenu();
+  pushModal(`
+    <h2>Sélection par texte</h2>
+    <div class="modal-field">
+      <label>Collez la liste de produits (un par ligne)</label>
+      <textarea id="bulksel-text" placeholder="Tomates\nLait\nPain"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+      <button class="modal-btn primary" onclick="processBulkSelect()">Rechercher</button>
+    </div>
+  `);
+}
+
+function processBulkSelect() {
+  const text = document.getElementById('bulksel-text')?.value || '';
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  if (lines.length === 0) { showToast('Entrez au moins un produit'); return; }
+
+  closeTopModal();
+
+  const results = [];
+  lines.forEach(line => {
+    const exact = state.products.find(p => normalize(p.name) === normalize(line));
+    if (exact) {
+      exact.selected = true;
+      exact.frequency = (exact.frequency || 0) + 1;
+      exact.qty = exact.qty || 1;
+      results.push({line, type: 'exact', product: exact});
+      return;
+    }
+    const sim = findSimilar(line, null);
+    if (sim.length > 0 && sim[0].similarity >= 0.5) {
+      results.push({line, type: 'similar', match: sim[0].product, similarity: sim[0].similarity});
+    } else {
+      results.push({line, type: 'missing'});
+    }
+  });
+
+  saveData();
+
+  const needsReview = results.filter(r => r.type === 'similar' || r.type === 'missing');
+  if (needsReview.length === 0) {
+    render();
+    showToast(`${results.length} produit${results.length>1?'s':''} sélectionné${results.length>1?'s':''}`);
+    return;
+  }
+
+  let html = `<h2>Vérification</h2><div id="bulk-review">`;
+  needsReview.forEach((r, i) => {
+    if (r.type === 'similar') {
+      html += `
+        <div class="match-suggestion" id="review-${i}">
+          <div class="match-text">"<em>${r.line}</em>" → <em>${r.match.name}</em> ?</div>
+          <div class="match-actions">
+            <button class="match-btn accept" onclick="acceptMatch(${i},'${r.match.id}')">Oui, sélectionner</button>
+            <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Non, ajouter nouveau</button>
+            <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
+          </div>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="match-suggestion" id="review-${i}">
+          <div class="match-text">"<em>${r.line}</em>" introuvable</div>
+          <div class="match-actions">
+            <button class="match-btn accept" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Ajouter</button>
+            <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
+          </div>
+        </div>
+      `;
+    }
+  });
+  html += `</div><div class="modal-actions"><button class="modal-btn primary" onclick="closeTopModal();render();">Terminé</button></div>`;
+  pushModal(html);
+  render();
+}
+
+function acceptMatch(i, productId) {
+  const p = state.products.find(x => x.id === productId);
+  if (p) {
+    p.selected = true;
+    p.frequency = (p.frequency || 0) + 1;
+    p.qty = p.qty || 1;
+    saveData();
+  }
+  document.getElementById('review-'+i).innerHTML = `<div class="match-text" style="color:var(--accent2)">✓ ${p.name} sélectionné</div>`;
+}
+
+function offerAddFromReview(i, name) {
+  const el = document.getElementById('review-'+i);
+  el.innerHTML = `
+    <div class="match-text">Ajouter "<em>${name}</em>"</div>
+    <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="review-name-${i}" value="${name}" style="flex:1;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:14px">
+      <select id="review-aisle-${i}" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:14px">
+        ${state.aisles.map(a => `<option value="${a}">${a}</option>`).join('')}
+      </select>
+      <button class="match-btn accept" onclick="confirmReviewAdd(${i})">OK</button>
+    </div>
+  `;
+}
+
+function confirmReviewAdd(i) {
+  const name = document.getElementById('review-name-'+i)?.value?.trim();
+  const aisle = document.getElementById('review-aisle-'+i)?.value;
+  if (!name) return;
+  addProductToState(name, aisle);
+  // Also select it
+  const p = state.products[state.products.length - 1];
+  p.selected = true;
+  p.frequency = 1;
+  saveData();
+  document.getElementById('review-'+i).innerHTML = `<div class="match-text" style="color:var(--accent2)">✓ ${name} ajouté et sélectionné</div>`;
+}
+
+// ==============================
+// MANAGE AISLES
+// ==============================
+function openManageAisles() {
+  closeMenu();
+  renderAisleModal();
+}
+
+function renderAisleModal() {
+  let html = `
+    <h2>Gérer les rayons</h2>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" id="new-aisle-name" placeholder="Nouveau rayon..." style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);font-family:inherit;font-size:14px;outline:none">
+      <button class="modal-btn primary" style="flex:0;padding:10px 16px" onclick="addAisle()">+</button>
+    </div>
+    <ul class="aisle-reorder-list" id="aisle-list">
+      ${state.aisles.map((a, idx) => `
+        <li class="aisle-reorder-item" data-idx="${idx}" draggable="false">
+          <span class="drag-handle" style="cursor:grab;touch-action:none"
+            onpointerdown="startDragAisle(event,${idx})">☰</span>
+          <span class="aisle-label">${a}</span>
+          <span class="delete-btn" onclick="removeAisle('${a.replace(/'/g,"\\'")}')">×</span>
+          ${idx > 0 ? `<span class="delete-btn" onclick="moveAisle(${idx},-1)" style="font-size:14px">▲</span>` : '<span style="width:26px"></span>'}
+          ${idx < state.aisles.length-1 ? `<span class="delete-btn" onclick="moveAisle(${idx},1)" style="font-size:14px">▼</span>` : '<span style="width:26px"></span>'}
+        </li>
+      `).join('')}
+    </ul>
+    <div class="modal-actions">
+      <button class="modal-btn primary" onclick="closeTopModal();render();">Terminé</button>
+    </div>
+  `;
+  // Replace or push
+  if (modalStack.length > 0 && modalStack[modalStack.length-1]._isAisle) {
+    modalStack[modalStack.length-1] = {html, _isAisle: true};
+    render();
+  } else {
+    pushModal(html);
+    modalStack[modalStack.length-1]._isAisle = true;
+  }
+}
+
+function addAisle() {
+  const inp = document.getElementById('new-aisle-name');
+  const name = inp?.value?.trim();
+  if (!name) return;
+  if (state.aisles.some(a => normalize(a) === normalize(name))) {
+    showToast('Ce rayon existe déjà');
+    return;
+  }
+  state.aisles.push(name);
+  saveData();
+  renderAisleModal();
+  showToast(`Rayon "${name}" ajouté`);
+}
+
+function removeAisle(name) {
+  const prods = state.products.filter(p => p.aisle === name);
+  if (prods.length > 0) {
+    showToast(`Impossible : ${prods.length} produit${prods.length>1?'s':''} dans ce rayon`);
+    return;
+  }
+  state.aisles = state.aisles.filter(a => a !== name);
+  saveData();
+  renderAisleModal();
+  showToast(`Rayon supprimé`);
+}
+
+function moveAisle(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= state.aisles.length) return;
+  [state.aisles[idx], state.aisles[newIdx]] = [state.aisles[newIdx], state.aisles[idx]];
+  saveData();
+  renderAisleModal();
+}
+
+// Pointer-based drag for aisles
+let dragAisleIdx = null;
+let dragAisleStartY = 0;
+let dragAisleEl = null;
+
+function startDragAisle(e, idx) {
+  e.preventDefault();
+  dragAisleIdx = idx;
+  dragAisleStartY = e.clientY;
+  const list = document.getElementById('aisle-list');
+  dragAisleEl = list?.children[idx];
+  if (dragAisleEl) dragAisleEl.style.opacity = '0.5';
+
+  const onMove = (ev) => {
+    const delta = ev.clientY - dragAisleStartY;
+    const itemH = 54;
+    const steps = Math.round(delta / itemH);
+    if (steps !== 0) {
+      const newIdx = Math.max(0, Math.min(state.aisles.length - 1, dragAisleIdx + steps));
+      if (newIdx !== dragAisleIdx) {
+        const [item] = state.aisles.splice(dragAisleIdx, 1);
+        state.aisles.splice(newIdx, 0, item);
+        dragAisleIdx = newIdx;
+        dragAisleStartY = ev.clientY;
+        saveData();
+        renderAisleModal();
+      }
+    }
+  };
+
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    if (dragAisleEl) dragAisleEl.style.opacity = '1';
+    dragAisleIdx = null;
+  };
+
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+// ==============================
+// EXPORT / IMPORT
+// ==============================
+function exportJSON() {
+  closeMenu();
+  const data = {
+    aisles: state.aisles,
+    products: state.products.map(p => ({
+      name: p.name,
+      aisle: p.aisle,
+      frequency: p.frequency || 0,
+      qty: p.qty || 1
+    }))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mes-courses.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Export téléchargé');
+}
+
+function importJSON() {
+  closeMenu();
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.aisles && data.products) {
+          pushModal(`
+            <h2>Importer</h2>
+            <p style="color:var(--text2);margin-bottom:16px">
+              Cette action remplacera toute votre liste actuelle par l'import
+              (${data.products.length} produits, ${data.aisles.length} rayons).
+            </p>
+            <div class="modal-actions">
+              <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+              <button class="modal-btn primary" onclick="confirmImport()">Importer</button>
+            </div>
+          `);
+          window._pendingImport = data;
+        } else {
+          showToast('Fichier invalide');
+        }
+      } catch(err) {
+        showToast('Erreur de lecture du fichier');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function confirmImport() {
+  const data = window._pendingImport;
+  if (!data) return;
+  state.aisles = data.aisles;
+  state.products = data.products.map(p => ({
+    id: newId(),
+    name: p.name,
+    aisle: p.aisle,
+    selected: false,
+    frequency: p.frequency || 0,
+    qty: p.qty || 1
+  }));
+  openFrequencies = {};
+  state.products.forEach(p => { openFrequencies[p.id] = p.frequency || 0; });
+  saveData();
+  closeTopModal();
+  render();
+  showToast('Import réussi !');
+}
+
+// ==============================
+// SHARE
+// ==============================
+function shareText(text, title) {
+  if (navigator.share) {
+    navigator.share({ title, text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast('Copié dans le presse-papier'));
+  }
+}
+
+function shareSelected() {
+  closeMenu();
+  const selected = state.products.filter(p => p.selected);
+  if (selected.length === 0) { showToast('Aucun produit sélectionné'); return; }
+
+  // Group by aisle
+  const grouped = new Map();
+  state.aisles.forEach(a => grouped.set(a, []));
+  selected.forEach(p => {
+    if (!grouped.has(p.aisle)) grouped.set(p.aisle, []);
+    grouped.get(p.aisle).push(p);
+  });
+
+  let text = '🛒 Liste de courses\n\n';
+  grouped.forEach((items, aisle) => {
+    if (items.length === 0) return;
+    text += `📍 ${aisle}\n`;
+    items.forEach(p => {
+      text += `  • ${p.name}${p.qty > 1 ? ' (×'+p.qty+')' : ''}\n`;
+    });
+    text += '\n';
+  });
+
+  shareText(text, 'Liste de courses');
+}
+
+function shareAll() {
+  closeMenu();
+  if (state.products.length === 0) { showToast('Liste vide'); return; }
+
+  const grouped = new Map();
+  state.aisles.forEach(a => grouped.set(a, []));
+  state.products.forEach(p => {
+    if (!grouped.has(p.aisle)) grouped.set(p.aisle, []);
+    grouped.get(p.aisle).push(p);
+  });
+
+  let text = '📋 Tous les produits\n\n';
+  grouped.forEach((items, aisle) => {
+    if (items.length === 0) return;
+    text += `📍 ${aisle}\n`;
+    items.forEach(p => { text += `  • ${p.name}\n`; });
+    text += '\n';
+  });
+
+  shareText(text, 'Tous mes produits');
+}
+
+// ==============================
+// MENU & MODAL
+// ==============================
+function openMenu() { menuOpen = true; render(); }
+function closeMenu(e) {
+  if (e && e.target !== e.currentTarget) return;
+  menuOpen = false;
+  render();
+}
+
+function pushModal(html) {
+  modalStack.push({html});
+  render();
+}
+
+function closeTopModal() {
+  modalStack.pop();
+  render();
+}
+
+// ==============================
+// INIT
+// ==============================
+render();
+
+// Service worker registration for offline
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
