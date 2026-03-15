@@ -1589,7 +1589,7 @@ function addAisle() {
   }
   state.aisles.push(name);
   saveData();
-  renderAisleModal();
+  updateAisleList();
   showToast(`Rayon "${name}" ajouté`);
 }
 
@@ -1614,9 +1614,9 @@ function confirmRemoveAisle(name) {
   state.aisles = state.aisles.filter(a => a !== name);
   saveData();
   closeTopModal(); // close confirm
-  // Re-render the aisle modal underneath
+  // Update the aisle list underneath
   if (modalStack.length > 0 && modalStack[modalStack.length-1]._isAisle) {
-    renderAisleModal();
+    updateAisleList();
   }
   showToast(`Rayon supprimé`);
 }
@@ -1626,7 +1626,22 @@ function moveAisle(idx, dir) {
   if (newIdx < 0 || newIdx >= state.aisles.length) return;
   [state.aisles[idx], state.aisles[newIdx]] = [state.aisles[newIdx], state.aisles[idx]];
   saveData();
-  renderAisleModal();
+  updateAisleList();
+}
+
+function updateAisleList() {
+  const list = document.getElementById('aisle-list');
+  if (!list) { renderAisleModal(); return; }
+  list.innerHTML = state.aisles.map((a, idx) => `
+    <li class="aisle-reorder-item" data-idx="${idx}" draggable="false">
+      <span class="drag-handle" style="cursor:grab;touch-action:none"
+        onpointerdown="startDragAisle(event,${idx})">☰</span>
+      <span class="aisle-label">${a}</span>
+      <span class="delete-btn" onclick="removeAisle('${a.replace(/'/g,"\\'")}')">×</span>
+      ${idx > 0 ? `<span class="delete-btn" onclick="moveAisle(${idx},-1)" style="font-size:14px">▲</span>` : '<span style="width:26px"></span>'}
+      ${idx < state.aisles.length-1 ? `<span class="delete-btn" onclick="moveAisle(${idx},1)" style="font-size:14px">▼</span>` : '<span style="width:26px"></span>'}
+    </li>
+  `).join('');
 }
 
 // Pointer-based drag for aisles
@@ -1727,7 +1742,7 @@ function startDragAisle(e, idx) {
     });
 
     dragState = null;
-    renderAisleModal();
+    updateAisleList();
   };
 
   document.addEventListener('pointermove', onMove, {passive: false});
