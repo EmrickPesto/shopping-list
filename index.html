@@ -1496,26 +1496,18 @@ function processBulkSelect() {
     simItems.forEach((r, i) => {
       // Find ALL similar matches
       const allMatches = findSimilar(r.line, null, 0.4);
-      const best = allMatches[0];
-      const others = allMatches.slice(1);
       html += `
         <div class="match-suggestion" id="review-${i}">
           <div class="match-text" style="margin-bottom:8px">"<em>${r.line}</em>"</div>
           <div id="review-body-${i}">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <button class="match-btn accept" onclick="acceptMatchFromList(${i},'${best.product.id}','${best.product.name.replace(/'/g,"\\'")}')" style="flex-shrink:0">
-                → ${best.product.name}
-              </button>
-              ${others.length > 0 ? `
-                <select id="review-alt-${i}" style="padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:12px;max-width:160px">
-                  <option value="" disabled selected>${others.length} autre${others.length>1?'s':''}…</option>
-                  ${others.map(m => `<option value="${m.product.id}" data-name="${m.product.name.replace(/"/g,'&quot;')}">${m.product.name} (${Math.round(m.similarity*100)}%)</option>`).join('')}
-                </select>
-                <button class="match-btn" onclick="selectAltMatch(${i})" style="padding:4px 8px;font-size:12px">OK</button>
-              ` : ''}
+              <select id="review-alt-${i}" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:14px">
+                ${allMatches.map((m, mi) => `<option value="${m.product.id}" data-name="${m.product.name.replace(/"/g,'&quot;')}" ${mi === 0 ? 'selected' : ''}>${m.product.name} (${Math.round(m.similarity*100)}%)</option>`).join('')}
+              </select>
+              <button class="match-btn accept" onclick="selectAltMatch(${i})" style="white-space:nowrap">Sélectionner</button>
             </div>
             <div class="match-actions" style="margin-top:8px">
-              <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Ajouter nouveau</button>
+              <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Ajouter "${r.line}"</button>
               <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
             </div>
           </div>
