@@ -1617,7 +1617,7 @@ function acceptMatchFromList(i, productId, productName) {
   el.dataset.productId = productId;
   el.dataset.checked = 'true';
   el.style.cursor = 'pointer';
-  el.onclick = () => toggleBulkSelItem('review-' + i);
+  el.style.opacity = '';
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px">
       <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--accent2)">
@@ -1631,6 +1631,8 @@ function acceptMatchFromList(i, productId, productName) {
       </div>
     </div>
   `;
+  // Delay onclick assignment so the current click event doesn't bubble and toggle it off
+  setTimeout(() => { el.onclick = () => toggleBulkSelItem('review-' + i); }, 0);
 }
 
 function selectAltMatch(i) {
