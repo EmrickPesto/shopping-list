@@ -1447,13 +1447,11 @@ function processBulkSelect() {
 
   closeTopModal();
 
+  // Categorize each line
   const results = [];
   lines.forEach(line => {
     const exact = state.products.find(p => normalize(p.name) === normalize(line));
     if (exact) {
-      exact.selected = true;
-      exact.frequency = (exact.frequency || 0) + 1;
-      exact.qty = exact.qty || 1;
       results.push({line, type: 'exact', product: exact});
       return;
     }
@@ -1465,18 +1463,37 @@ function processBulkSelect() {
     }
   });
 
-  saveData();
+  // Build review modal
+  let html = `<h2>Vérification</h2>`;
 
-  const needsReview = results.filter(r => r.type === 'similar' || r.type === 'missing');
-  if (needsReview.length === 0) {
-    render();
-    showToast(`${results.length} produit${results.length>1?'s':''} sélectionné${results.length>1?'s':''}`);
-    return;
+  // Exact matches - shown with checkbox and qty
+  const exactItems = results.filter(r => r.type === 'exact');
+  if (exactItems.length > 0) {
+    html += `<div style="font-size:13px;color:var(--accent2);margin-bottom:6px;font-weight:600">Trouvés (${exactItems.length})</div>`;
+    exactItems.forEach((r, i) => {
+      const p = r.product;
+      html += `
+        <div class="match-suggestion bulksel-item" id="bulksel-exact-${i}" data-product-id="${p.id}" data-checked="true">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;border:2px solid var(--accent2)" onclick="toggleBulkSelItem('bulksel-exact-${i}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <span style="flex:1;font-size:14px">${p.name}</span>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button class="product-qty-btn" onclick="changeBulkSelQty('bulksel-exact-${i}',-1)" style="width:24px;height:24px;font-size:14px">−</button>
+              <span class="product-qty" id="bulksel-qty-exact-${i}" style="font-size:13px;min-width:18px;text-align:center">1</span>
+              <button class="product-qty-btn" onclick="changeBulkSelQty('bulksel-exact-${i}',1)" style="width:24px;height:24px;font-size:14px">+</button>
+            </div>
+          </div>
+        </div>`;
+    });
   }
 
-  let html = `<h2>Vérification</h2><div id="bulk-review">`;
-  needsReview.forEach((r, i) => {
-    if (r.type === 'similar') {
+  // Similar matches - need confirmation
+  const simItems = results.filter(r => r.type === 'similar');
+  if (simItems.length > 0) {
+    html += `<div style="font-size:13px;color:var(--text2);margin:12px 0 6px;font-weight:600">Correspondances proches (${simItems.length})</div>`;
+    simItems.forEach((r, i) => {
       html += `
         <div class="match-suggestion" id="review-${i}">
           <div class="match-text">"<em>${r.line}</em>" → <em>${r.match.name}</em> ?</div>
@@ -1487,21 +1504,78 @@ function processBulkSelect() {
           </div>
         </div>
       `;
-    } else {
+    });
+  }
+
+  // Missing - not found at all
+  const missItems = results.filter(r => r.type === 'missing');
+  if (missItems.length > 0) {
+    html += `<div style="font-size:13px;color:var(--accent);margin:12px 0 6px;font-weight:600">Introuvables (${missItems.length})</div>`;
+    missItems.forEach((r, i) => {
+      const ri = simItems.length + i; // offset review id to avoid collision
       html += `
-        <div class="match-suggestion" id="review-${i}">
+        <div class="match-suggestion" id="review-${ri}">
           <div class="match-text">"<em>${r.line}</em>" introuvable</div>
           <div class="match-actions">
-            <button class="match-btn accept" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Ajouter</button>
-            <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
+            <button class="match-btn accept" onclick="offerAddFromReview(${ri},'${r.line.replace(/'/g,"\\'")}')">Ajouter</button>
+            <button class="match-btn" onclick="document.getElementById('review-${ri}').style.display='none'">Ignorer</button>
           </div>
         </div>
       `;
-    }
-  });
-  html += `</div><div class="modal-actions"><button class="modal-btn primary" onclick="closeTopModal();render();">Terminé</button></div>`;
+    });
+  }
+
+  html += `<div class="modal-actions">
+    <button class="modal-btn" onclick="closeTopModal()">Annuler</button>
+    <button class="modal-btn primary" onclick="commitBulkSelect()">Confirmer</button>
+  </div>`;
   pushModal(html);
+}
+
+function toggleBulkSelItem(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const checked = el.dataset.checked === 'true';
+  el.dataset.checked = checked ? 'false' : 'true';
+  const cb = el.querySelector('.product-checkbox');
+  if (checked) {
+    cb.style.background = 'var(--bg2)';
+    cb.style.borderColor = 'var(--border)';
+    cb.innerHTML = '';
+  } else {
+    cb.style.background = 'var(--accent2)';
+    cb.style.borderColor = 'var(--accent2)';
+    cb.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+  }
+}
+
+function changeBulkSelQty(id, delta) {
+  const suffix = id.replace('bulksel-', '');
+  const qtyEl = document.getElementById('bulksel-qty-' + suffix);
+  if (!qtyEl) return;
+  const cur = parseInt(qtyEl.textContent) || 1;
+  const next = Math.max(1, cur + delta);
+  qtyEl.textContent = next;
+}
+
+function commitBulkSelect() {
+  let selected = 0;
+  // Process checked exact items
+  document.querySelectorAll('.bulksel-item[data-checked="true"]').forEach(el => {
+    const pid = el.dataset.productId;
+    const p = state.products.find(x => x.id === pid);
+    if (!p) return;
+    const qtyEl = el.querySelector('.product-qty');
+    const qty = qtyEl ? parseInt(qtyEl.textContent) || 1 : 1;
+    p.selected = true;
+    p.frequency = (p.frequency || 0) + 1;
+    p.qty = qty;
+    selected++;
+  });
+  saveData();
+  closeTopModal();
   render();
+  showToast(`${selected} produit${selected > 1 ? 's' : ''} sélectionné${selected > 1 ? 's' : ''}`);
 }
 
 function acceptMatch(i, productId) {
