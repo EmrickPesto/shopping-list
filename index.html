@@ -1480,9 +1480,9 @@ function processBulkSelect() {
             </div>
             <span style="flex:1;font-size:14px">${p.name}</span>
             <div style="display:flex;align-items:center;gap:4px">
-              <button class="product-qty-btn" onclick="changeBulkSelQty('bulksel-exact-${i}',-1)" style="width:24px;height:24px;font-size:14px">−</button>
+              <button class="product-qty-btn" onclick="changeBulkSelQty('exact-${i}',-1)" style="width:24px;height:24px;font-size:14px">−</button>
               <span class="product-qty" id="bulksel-qty-exact-${i}" style="font-size:13px;min-width:18px;text-align:center">1</span>
-              <button class="product-qty-btn" onclick="changeBulkSelQty('bulksel-exact-${i}',1)" style="width:24px;height:24px;font-size:14px">+</button>
+              <button class="product-qty-btn" onclick="changeBulkSelQty('exact-${i}',1)" style="width:24px;height:24px;font-size:14px">+</button>
             </div>
           </div>
         </div>`;
@@ -1494,12 +1494,23 @@ function processBulkSelect() {
   if (simItems.length > 0) {
     html += `<div style="font-size:13px;color:var(--text2);margin:12px 0 6px;font-weight:600">Correspondances proches (${simItems.length})</div>`;
     simItems.forEach((r, i) => {
+      // Find ALL similar matches, not just the top one
+      const allMatches = findSimilar(r.line, null, 0.4);
       html += `
         <div class="match-suggestion" id="review-${i}">
-          <div class="match-text">"<em>${r.line}</em>" → <em>${r.match.name}</em> ?</div>
-          <div class="match-actions">
-            <button class="match-btn accept" onclick="acceptMatch(${i},'${r.match.id}')">Oui, sélectionner</button>
-            <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Non, ajouter nouveau</button>
+          <div class="match-text" style="margin-bottom:6px">"<em>${r.line}</em>"</div>
+          <div id="review-choices-${i}">
+            ${allMatches.map((m, mi) => `
+              <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+                <button class="match-btn accept" onclick="acceptMatchFromList(${i},'${m.product.id}','${m.product.name.replace(/'/g,"\\'")}')" style="flex-shrink:0">
+                  ${mi === 0 ? '→' : ''} ${m.product.name}
+                </button>
+                <span style="font-size:11px;color:var(--text3)">${Math.round(m.similarity * 100)}%</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="match-actions" style="margin-top:6px">
+            <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Aucun → ajouter nouveau</button>
             <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
           </div>
         </div>
@@ -1550,8 +1561,7 @@ function toggleBulkSelItem(id) {
 }
 
 function changeBulkSelQty(id, delta) {
-  const suffix = id.replace('bulksel-', '');
-  const qtyEl = document.getElementById('bulksel-qty-' + suffix);
+  const qtyEl = document.getElementById('bulksel-qty-' + id);
   if (!qtyEl) return;
   const cur = parseInt(qtyEl.textContent) || 1;
   const next = Math.max(1, cur + delta);
@@ -1578,15 +1588,26 @@ function commitBulkSelect() {
   showToast(`${selected} produit${selected > 1 ? 's' : ''} sélectionné${selected > 1 ? 's' : ''}`);
 }
 
-function acceptMatch(i, productId) {
-  const p = state.products.find(x => x.id === productId);
-  if (p) {
-    p.selected = true;
-    p.frequency = (p.frequency || 0) + 1;
-    p.qty = p.qty || 1;
-    saveData();
-  }
-  document.getElementById('review-'+i).innerHTML = `<div class="match-text" style="color:var(--accent2)">✓ ${p.name} sélectionné</div>`;
+function acceptMatchFromList(i, productId, productName) {
+  const el = document.getElementById('review-' + i);
+  if (!el) return;
+  // Turn into a confirmed item with qty controls (reuses bulksel-item for commitBulkSelect)
+  el.className = 'match-suggestion bulksel-item';
+  el.dataset.productId = productId;
+  el.dataset.checked = 'true';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;border:2px solid var(--accent2)" onclick="toggleBulkSelItem('review-${i}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <span style="flex:1;font-size:14px;color:var(--accent2)">${productName}</span>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button class="product-qty-btn" onclick="changeBulkSelQty('review-${i}',-1)" style="width:24px;height:24px;font-size:14px">−</button>
+        <span class="product-qty" id="bulksel-qty-review-${i}" style="font-size:13px;min-width:18px;text-align:center">1</span>
+        <button class="product-qty-btn" onclick="changeBulkSelQty('review-${i}',1)" style="width:24px;height:24px;font-size:14px">+</button>
+      </div>
+    </div>
+  `;
 }
 
 function offerAddFromReview(i, name) {
