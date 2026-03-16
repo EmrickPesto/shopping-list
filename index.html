@@ -1550,13 +1550,19 @@ function toggleBulkSelItem(id) {
   el.dataset.checked = checked ? 'false' : 'true';
   const cb = el.querySelector('.product-checkbox');
   if (checked) {
+    // Deselect: grey out
     cb.style.background = 'var(--bg2)';
     cb.style.borderColor = 'var(--border)';
     cb.innerHTML = '';
+    el.style.opacity = '0.4';
   } else {
+    // Re-select and reset qty to 1
     cb.style.background = 'var(--accent2)';
     cb.style.borderColor = 'var(--accent2)';
     cb.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+    el.style.opacity = '';
+    const qtyEl = el.querySelector('.product-qty');
+    if (qtyEl) qtyEl.textContent = '1';
   }
 }
 
@@ -1564,7 +1570,14 @@ function changeBulkSelQty(id, delta) {
   const qtyEl = document.getElementById('bulksel-qty-' + id);
   if (!qtyEl) return;
   const cur = parseInt(qtyEl.textContent) || 1;
-  const next = Math.max(1, cur + delta);
+  const next = cur + delta;
+  if (next < 1) {
+    // Deselect the item
+    // Find parent bulksel-item by id prefix
+    const el = document.getElementById(id) || qtyEl.closest('.bulksel-item');
+    if (el) toggleBulkSelItem(el.id);
+    return;
+  }
   qtyEl.textContent = next;
 }
 
