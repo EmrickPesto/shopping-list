@@ -1473,13 +1473,13 @@ function processBulkSelect() {
     exactItems.forEach((r, i) => {
       const p = r.product;
       html += `
-        <div class="match-suggestion bulksel-item" id="bulksel-exact-${i}" data-product-id="${p.id}" data-checked="true">
+        <div class="match-suggestion bulksel-item" id="bulksel-exact-${i}" data-product-id="${p.id}" data-checked="true" onclick="toggleBulkSelItem('bulksel-exact-${i}')" style="cursor:pointer">
           <div style="display:flex;align-items:center;gap:10px">
-            <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;border:2px solid var(--accent2)" onclick="toggleBulkSelItem('bulksel-exact-${i}')">
+            <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--accent2)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
             </div>
             <span style="flex:1;font-size:14px">${p.name}</span>
-            <div style="display:flex;align-items:center;gap:4px">
+            <div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">
               <button class="product-qty-btn" onclick="changeBulkSelQty('exact-${i}',-1)" style="width:24px;height:24px;font-size:14px">−</button>
               <span class="product-qty" id="bulksel-qty-exact-${i}" style="font-size:13px;min-width:18px;text-align:center">1</span>
               <button class="product-qty-btn" onclick="changeBulkSelQty('exact-${i}',1)" style="width:24px;height:24px;font-size:14px">+</button>
@@ -1508,7 +1508,6 @@ function processBulkSelect() {
             </div>
             <div class="match-actions" style="margin-top:8px">
               <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Ajouter "${r.line}"</button>
-              <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
             </div>
           </div>
         </div>
@@ -1569,12 +1568,22 @@ function toggleBulkSelItem(id) {
 function changeBulkSelQty(id, delta) {
   const qtyEl = document.getElementById('bulksel-qty-' + id);
   if (!qtyEl) return;
+  // Find parent bulksel-item
+  const el = qtyEl.closest('.bulksel-item');
+  const isChecked = el && el.dataset.checked === 'true';
+
+  if (!isChecked) {
+    // Deselected: only "+" re-selects
+    if (delta > 0 && el) {
+      toggleBulkSelItem(el.id);
+    }
+    return;
+  }
+
   const cur = parseInt(qtyEl.textContent) || 1;
   const next = cur + delta;
   if (next < 1) {
     // Deselect the item
-    // Find parent bulksel-item by id prefix
-    const el = document.getElementById(id) || qtyEl.closest('.bulksel-item');
     if (el) toggleBulkSelItem(el.id);
     return;
   }
@@ -1604,17 +1613,18 @@ function commitBulkSelect() {
 function acceptMatchFromList(i, productId, productName) {
   const el = document.getElementById('review-' + i);
   if (!el) return;
-  // Turn into a confirmed item with qty controls (reuses bulksel-item for commitBulkSelect)
   el.className = 'match-suggestion bulksel-item';
   el.dataset.productId = productId;
   el.dataset.checked = 'true';
+  el.style.cursor = 'pointer';
+  el.onclick = () => toggleBulkSelItem('review-' + i);
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;border:2px solid var(--accent2)" onclick="toggleBulkSelItem('review-${i}')">
+      <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--accent2)">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
       </div>
       <span style="flex:1;font-size:14px;color:var(--accent2)">${productName}</span>
-      <div style="display:flex;align-items:center;gap:4px">
+      <div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">
         <button class="product-qty-btn" onclick="changeBulkSelQty('review-${i}',-1)" style="width:24px;height:24px;font-size:14px">−</button>
         <span class="product-qty" id="bulksel-qty-review-${i}" style="font-size:13px;min-width:18px;text-align:center">1</span>
         <button class="product-qty-btn" onclick="changeBulkSelQty('review-${i}',1)" style="width:24px;height:24px;font-size:14px">+</button>
