@@ -1494,24 +1494,30 @@ function processBulkSelect() {
   if (simItems.length > 0) {
     html += `<div style="font-size:13px;color:var(--text2);margin:12px 0 6px;font-weight:600">Correspondances proches (${simItems.length})</div>`;
     simItems.forEach((r, i) => {
-      // Find ALL similar matches, not just the top one
+      // Find ALL similar matches
       const allMatches = findSimilar(r.line, null, 0.4);
+      const best = allMatches[0];
+      const others = allMatches.slice(1);
       html += `
         <div class="match-suggestion" id="review-${i}">
-          <div class="match-text" style="margin-bottom:6px">"<em>${r.line}</em>"</div>
-          <div id="review-choices-${i}">
-            ${allMatches.map((m, mi) => `
-              <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-                <button class="match-btn accept" onclick="acceptMatchFromList(${i},'${m.product.id}','${m.product.name.replace(/'/g,"\\'")}')" style="flex-shrink:0">
-                  ${mi === 0 ? '→' : ''} ${m.product.name}
-                </button>
-                <span style="font-size:11px;color:var(--text3)">${Math.round(m.similarity * 100)}%</span>
-              </div>
-            `).join('')}
-          </div>
-          <div class="match-actions" style="margin-top:6px">
-            <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Aucun → ajouter nouveau</button>
-            <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
+          <div class="match-text" style="margin-bottom:8px">"<em>${r.line}</em>"</div>
+          <div id="review-body-${i}">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="match-btn accept" onclick="acceptMatchFromList(${i},'${best.product.id}','${best.product.name.replace(/'/g,"\\'")}')" style="flex-shrink:0">
+                → ${best.product.name}
+              </button>
+              ${others.length > 0 ? `
+                <select id="review-alt-${i}" style="padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:12px;max-width:160px">
+                  <option value="" disabled selected>${others.length} autre${others.length>1?'s':''}…</option>
+                  ${others.map(m => `<option value="${m.product.id}" data-name="${m.product.name.replace(/"/g,'&quot;')}">${m.product.name} (${Math.round(m.similarity*100)}%)</option>`).join('')}
+                </select>
+                <button class="match-btn" onclick="selectAltMatch(${i})" style="padding:4px 8px;font-size:12px">OK</button>
+              ` : ''}
+            </div>
+            <div class="match-actions" style="margin-top:8px">
+              <button class="match-btn" onclick="offerAddFromReview(${i},'${r.line.replace(/'/g,"\\'")}')">Ajouter nouveau</button>
+              <button class="match-btn" onclick="document.getElementById('review-${i}').style.display='none'">Ignorer</button>
+            </div>
           </div>
         </div>
       `;
@@ -1527,9 +1533,11 @@ function processBulkSelect() {
       html += `
         <div class="match-suggestion" id="review-${ri}">
           <div class="match-text">"<em>${r.line}</em>" introuvable</div>
-          <div class="match-actions">
-            <button class="match-btn accept" onclick="offerAddFromReview(${ri},'${r.line.replace(/'/g,"\\'")}')">Ajouter</button>
-            <button class="match-btn" onclick="document.getElementById('review-${ri}').style.display='none'">Ignorer</button>
+          <div id="review-body-${ri}">
+            <div class="match-actions">
+              <button class="match-btn accept" onclick="offerAddFromReview(${ri},'${r.line.replace(/'/g,"\\'")}')">Ajouter</button>
+              <button class="match-btn" onclick="document.getElementById('review-${ri}').style.display='none'">Ignorer</button>
+            </div>
           </div>
         </div>
       `;
@@ -1610,18 +1618,46 @@ function acceptMatchFromList(i, productId, productName) {
   `;
 }
 
+function selectAltMatch(i) {
+  const sel = document.getElementById('review-alt-' + i);
+  if (!sel || !sel.value) return;
+  const productId = sel.value;
+  const productName = sel.options[sel.selectedIndex].dataset.name;
+  acceptMatchFromList(i, productId, productName);
+}
+
+// Store original HTML for cancel support
+const reviewOriginals = {};
+
 function offerAddFromReview(i, name) {
   const el = document.getElementById('review-'+i);
-  el.innerHTML = `
-    <div class="match-text">Ajouter "<em>${name}</em>"</div>
+  const bodyEl = document.getElementById('review-body-'+i);
+  // Save original body for cancel
+  if (bodyEl) {
+    reviewOriginals[i] = bodyEl.innerHTML;
+  }
+  const target = bodyEl || el;
+  target.innerHTML = `
     <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
       <input type="text" id="review-name-${i}" value="${name}" style="flex:1;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:14px">
       <select id="review-aisle-${i}" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;font-size:14px">
         ${state.aisles.map(a => `<option value="${a}">${a}</option>`).join('')}
       </select>
-      <button class="match-btn accept" onclick="confirmReviewAdd(${i})">OK</button>
+    </div>
+    <div class="match-actions" style="margin-top:8px">
+      <button class="match-btn accept" onclick="confirmReviewAdd(${i})">Ajouter</button>
+      <button class="match-btn" onclick="cancelAddFromReview(${i})">Annuler</button>
     </div>
   `;
+  setTimeout(() => { const inp = document.getElementById('review-name-'+i); if(inp) inp.focus(); }, 50);
+}
+
+function cancelAddFromReview(i) {
+  const bodyEl = document.getElementById('review-body-'+i);
+  if (bodyEl && reviewOriginals[i]) {
+    bodyEl.innerHTML = reviewOriginals[i];
+    delete reviewOriginals[i];
+  }
 }
 
 function confirmReviewAdd(i) {
@@ -1629,12 +1665,24 @@ function confirmReviewAdd(i) {
   const aisle = document.getElementById('review-aisle-'+i)?.value;
   if (!name) return;
   addProductToState(name, aisle);
-  // Also select it
   const p = state.products[state.products.length - 1];
   p.selected = true;
   p.frequency = 1;
   saveData();
-  document.getElementById('review-'+i).innerHTML = `<div class="match-text" style="color:var(--accent2)">✓ ${name} ajouté et sélectionné</div>`;
+  // Turn into confirmed item with qty
+  const el = document.getElementById('review-'+i);
+  el.className = 'match-suggestion bulksel-item';
+  el.dataset.productId = p.id;
+  el.dataset.checked = 'true';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="product-checkbox" style="background:var(--accent2);border-color:var(--accent2);width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--accent2)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <span style="flex:1;font-size:14px;color:var(--accent2)">✓ ${name} ajouté</span>
+    </div>
+  `;
+  delete reviewOriginals[i];
 }
 
 // ==============================
