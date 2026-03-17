@@ -31,6 +31,7 @@
   --radius-sm: 10px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --kb-offset: 0px;
 }
 
 [data-theme="dark"] {
@@ -462,6 +463,7 @@ body {
   padding: 20px 20px calc(var(--safe-bottom) + 20px);
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  margin-bottom: var(--kb-offset);
 }
 .modal-overlay.open .modal { transform: translateY(0); }
 
@@ -1240,11 +1242,12 @@ function confirmResetAll() {
 // ADD PRODUCT
 // ==============================
 function openAddProduct() {
+  const prefill = searchQuery || '';
   pushModal(`
     <h2>Ajouter un produit</h2>
     <div class="modal-field">
       <label>Nom du produit</label>
-      <input type="text" id="add-name" placeholder="Ex: Tomates cerises" autocomplete="off">
+      <input type="text" id="add-name" placeholder="Ex: Tomates cerises" autocomplete="off" value="${prefill.replace(/"/g,'&quot;')}">
     </div>
     <div class="modal-field">
       <label>Rayon</label>
@@ -1262,7 +1265,9 @@ function openAddProduct() {
     const inp = document.getElementById('add-name');
     if (inp) {
       inp.focus();
+      inp.setSelectionRange(inp.value.length, inp.value.length);
       inp.addEventListener('input', () => checkSimilarOnAdd());
+      if (prefill) checkSimilarOnAdd();
     }
   }, 100);
 }
@@ -2239,6 +2244,31 @@ function handleSheetTouchEnd(e) {
 // INIT
 // ==============================
 render();
+
+// iOS keyboard handling: adjust modals when virtual keyboard opens
+if (window.visualViewport) {
+  let pendingUpdate = false;
+  const updateViewport = () => {
+    pendingUpdate = false;
+    const vv = window.visualViewport;
+    // offsetTop is how much the visual viewport is shifted down from the layout viewport top
+    // height difference tells us the keyboard height
+    const keyboardOffset = window.innerHeight - vv.height;
+    document.documentElement.style.setProperty('--kb-offset', keyboardOffset + 'px');
+  };
+  window.visualViewport.addEventListener('resize', () => {
+    if (!pendingUpdate) {
+      pendingUpdate = true;
+      requestAnimationFrame(updateViewport);
+    }
+  });
+  window.visualViewport.addEventListener('scroll', () => {
+    if (!pendingUpdate) {
+      pendingUpdate = true;
+      requestAnimationFrame(updateViewport);
+    }
+  });
+}
 
 // Service worker registration for offline
 if ('serviceWorker' in navigator) {
